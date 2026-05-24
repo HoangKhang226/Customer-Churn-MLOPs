@@ -1,9 +1,10 @@
 from src.utils.common import read_yaml, create_directories
-from src.entity.config_entity import DataIngestionConfig
+from src.entity.config_entity import DataIngestionConfig, DataValidationConfig
 from pathlib import Path
 import os
 
 CONFIG_FILE_PATH = Path("config/config.yaml")
+SCHEMA_FILE_PATH = Path("config/schema.yaml")
 
 class ConfigurationManager:
     """
@@ -12,32 +13,50 @@ class ConfigurationManager:
     """
     def __init__(
         self,
-        config_filepath = CONFIG_FILE_PATH):
+        config_filepath = CONFIG_FILE_PATH,
+        schema_filepath = SCHEMA_FILE_PATH):
         """
         Khởi tạo ConfigurationManager.
         
         Args:
             config_filepath (Path): Đường dẫn mặc định đến file config.yaml.
+            schema_filepath (Path): Đường dẫn mặc định đến file schema.yaml.
         """
-        self.config = read_yaml(config_filepath) # đọc file config.yaml
-        create_directories([self.config.artifacts_root]) # tạo folder artifacts gốc
+        self.config = read_yaml(config_filepath)
+        self.schema = read_yaml(schema_filepath)
+        
+        create_directories([self.config.artifacts_root])
 
     def get_data_ingestion_config(self) -> DataIngestionConfig:
         """
         Lấy thông tin cấu hình cho bước Data Ingestion.
-        
-        Returns:
-            DataIngestionConfig: Object chứa các đường dẫn cần thiết (root_dir, local_data_file, unzip_dir).
         """
         config = self.config.data_ingestion
 
-        # Tạo thư mục chứa dữ liệu đầu vào (data_ingestion) trong artifacts
         create_directories([config.root_dir])
 
         data_ingestion_config = DataIngestionConfig(
             root_dir=Path(config.root_dir),
             local_data_file=Path(config.local_data_file),
             unzip_dir=Path(config.unzip_dir)
-        ) # thêm các đường dẫn vào object
+        )
 
         return data_ingestion_config
+
+    def get_data_validation_config(self) -> DataValidationConfig:
+        """
+        Lấy thông tin cấu hình cho bước Data Validation.
+        """
+        config = self.config.data_validation
+        schema = self.schema.COLUMNS
+
+        create_directories([config.root_dir])
+
+        data_validation_config = DataValidationConfig(
+            root_dir=Path(config.root_dir),
+            STATUS_FILE=config.STATUS_FILE,
+            unzip_data_dir=Path(config.unzip_data_dir),
+            all_schema=schema,
+        )
+
+        return data_validation_config

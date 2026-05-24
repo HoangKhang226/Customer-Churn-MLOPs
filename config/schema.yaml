@@ -1,4 +1,5 @@
 COLUMNS:
+  id: int64
   gender: object
   SeniorCitizen: int64
   Partner: object
