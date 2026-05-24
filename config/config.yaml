@@ -1,0 +1,6 @@
+artifacts_root: artifacts
+
+data_ingestion:
+  root_dir: artifacts/data_ingestion
+  local_data_file: data/playground-series-s6e3.zip
+  unzip_dir: artifacts/data_ingestion

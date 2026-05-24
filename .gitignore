@@ -1,2 +1,5 @@
 venv
 data/
+artifacts/
+logs/
+__pycache__/

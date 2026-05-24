@@ -22,3 +22,5 @@ joblib>=1.1.0
 ipython>=7.0.0
 ipykernel
 kagglehub>=1.0.0
+python-box
+ensure
