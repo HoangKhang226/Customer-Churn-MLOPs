@@ -8,4 +8,3 @@ kaggle.json
 .ipynb_checkpoints/
 mlruns/
 *.db
-docs/
