@@ -1,0 +1,14 @@
+# Hyperparameters cho Model Training
+# Mỗi mô hình có tối đa 6 tổ hợp tham số cho GridSearchCV
+
+LightGBM:
+  n_estimators: [100, 200]
+  max_depth: [3, 5, 7]
+  learning_rate: [0.1]
+  # 2 x 3 x 1 = 6 tổ hợp
+
+XGBoost:
+  n_estimators: [100, 200]
+  max_depth: [3, 5, 6]
+  learning_rate: [0.1]
+  # 2 x 3 x 1 = 6 tổ hợp

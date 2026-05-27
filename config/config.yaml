@@ -15,3 +15,17 @@ data_transformation:
   train_data_path: artifacts/data_ingestion/train.csv
   test_data_path: artifacts/data_ingestion/test.csv
   preprocessor_path: artifacts/data_transformation/preprocessor.joblib
+
+model_trainer:
+  root_dir: artifacts/model_trainer
+  train_data_path: artifacts/data_transformation/train_transformed.npz
+  test_data_path: artifacts/data_transformation/test_transformed.npz
+  model_name: model.joblib
+  mlflow_uri: ""
+
+model_evaluation:
+  root_dir: artifacts/model_evaluation
+  test_data_path: artifacts/data_transformation/test_transformed.npz
+  model_path: artifacts/model_trainer/model.joblib
+  metric_file_name: artifacts/model_evaluation/metrics.json
+  mlflow_uri: ""

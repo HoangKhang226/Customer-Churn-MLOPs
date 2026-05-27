@@ -24,3 +24,5 @@ ipykernel
 kagglehub>=1.0.0
 python-box
 ensure
+pyyaml>=6.0
+mlflow>=2.0.0
