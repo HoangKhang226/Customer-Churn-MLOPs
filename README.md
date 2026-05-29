@@ -1,5 +1,32 @@
 # Customer Churn Prediction - ML Pipeline
 
+## Từ điển Dữ liệu (Data Dictionary)
+Bảng dưới đây mô tả chi tiết 22 đặc trưng trong tập dữ liệu đã được làm sạch, kiến tạo (Feature Engineering) và tối ưu hóa để huấn luyện mô hình Machine Learning.
+
+| STT | Tên cột (Feature) | Loại đặc trưng | Ý nghĩa nghiệp vụ |
+| :--- | :--- | :--- | :--- |
+| **1** | `churn_flag` | **Biến mục tiêu** | Nhãn khách hàng rời bỏ dịch vụ (`1`: Rời đi, `0`: Ở lại) |
+| **2** | `flag_high_risk_profile` | Cờ rủi ro (Kiến tạo) | Cờ siêu rủi ro tổng hợp (Điểm rủi ro tích lũy cao) |
+| **3** | `flag_electronic_check` | Cờ rủi ro (Kiến tạo) | Khách hàng thanh toán bằng Séc điện tử |
+| **4** | `flag_month_to_month` | Cờ rủi ro (Kiến tạo) | Khách hàng ký hợp đồng gia hạn từng tháng |
+| **5** | `flag_no_online_security`| Cờ rủi ro (Kiến tạo) | Khách hàng không cài đặt bảo mật trực tuyến |
+| **6** | `flag_fiber_optic` | Cờ rủi ro (Kiến tạo) | Khách hàng sử dụng mạng cáp quang |
+| **7** | `flag_no_tech_support` | Cờ rủi ro (Kiến tạo) | Khách hàng không sử dụng dịch vụ hỗ trợ kỹ thuật |
+| **8** | `loyalty_tier` | Thứ bậc (Kiến tạo) | Khoảng thời gian sử dụng dịch vụ (Đã phân cụm/binning từ biến `tenure`) |
+| **9** | `charge_segment` | Thứ bậc (Kiến tạo) | Phân khúc mức chi trả hàng tháng (Đã phân cụm/binning) |
+| **10** | `TotalServices` | Định lượng (Kiến tạo) | Tổng số lượng dịch vụ phụ trợ mà khách hàng sử dụng |
+| **11** | `tenure` | Định lượng gốc | Số tháng khách hàng đã sử dụng dịch vụ của công ty |
+| **12** | `MonthlyCharges` | Định lượng gốc | Số tiền cước phí phải trả hàng tháng |
+| **13** | `SeniorCitizen` | Định tính gốc | Khách hàng có phải là người cao tuổi hay không |
+| **14** | `Partner` | Định tính gốc | Khách hàng có bạn đời/vợ/chồng hay không |
+| **15** | `Dependents` | Định tính gốc | Khách hàng có người phụ thuộc (con cái...) hay không |
+| **16** | `MultipleLines` | Định tính gốc | Khách hàng có đăng ký nhiều đường dây thoại hay không |
+| **17** | `OnlineBackup` | Định tính gốc | Trạng thái sử dụng dịch vụ Sao lưu trực tuyến |
+| **18** | `DeviceProtection` | Định tính gốc | Trạng thái sử dụng dịch vụ Bảo vệ thiết bị |
+| **19** | `StreamingTV` | Định tính gốc | Trạng thái sử dụng dịch vụ Xem TV trực tuyến |
+| **20** | `StreamingMovies` | Định tính gốc | Trạng thái sử dụng dịch vụ Xem phim trực tuyến |
+| **21** | `PaperlessBilling` | Định tính gốc | Trạng thái sử dụng hóa đơn điện tử không giấy |
+
 Dự án dự đoán khách hàng rời bỏ dịch vụ (Customer Churn) sử dụng Machine Learning với kiến trúc MLOps Pipeline hoàn chỉnh.
 
 ## 📊 Kết quả đạt được
