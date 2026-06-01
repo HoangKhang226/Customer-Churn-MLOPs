@@ -10,9 +10,9 @@
 
 | Người | Tính năng phụ trách |
 |-------|---------------------|
-| **Người 1** | Dự đoán Churn đơn lẻ (Prediction API) |
-| **Người 2** | Trực quan hóa EDA (EDA Data API) |
-| **Người 3** | Sử dụng các mô hình khác nhau để đưa ra các chỉ số đánh giá, so sánh các mô hình  |
+| **Phát** | Dự đoán Churn đơn lẻ (Prediction API) |
+| **Đức** | Trực quan hóa EDA (EDA Data API) |
+| **Khang** | Sử dụng các mô hình khác nhau để đưa ra các chỉ số đánh giá, so sánh các mô hình  |
 
 ---
 
