@@ -14,7 +14,8 @@ pip install -r requirements.txt
 
 Khởi chạy máy chủ phát triển cục bộ từ thư mục gốc của dự án:
 ```bash
-uvicorn backend.main:app --reload
+cd backend
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 *   **Địa chỉ Server:** `http://127.0.0.1:8000`
 *   **Kiểm tra hoạt động:** Truy cập `http://127.0.0.1:8000/` (Sẽ trả về chuỗi JSON thông báo server đang hoạt động).
@@ -154,8 +155,8 @@ Tất cả các tính năng mới phải được tổ chức thành 3 lớp rõ
 ### 🔗 2. Đăng ký Router mới vào Hệ thống
 Sau khi xây dựng xong Router (ví dụ: `predict_route.py`), hãy import và đăng ký vào ứng dụng FastAPI chính tại file [backend/main.py](file:///c:/Users/Admin/Documents/viet_code/python/NMKHDL/customer_churn_prediction/backend/main.py) bằng lệnh:
 ```python
-from backend.app.routes import predict_route
-app.include_router(predict_route.router, prefix="/api/v1")
+from app.routes import predict_route
+app.include_router(predict_route.router)
 ```
 
 ### 📝 3. Quy chuẩn ghi Log (Logging)

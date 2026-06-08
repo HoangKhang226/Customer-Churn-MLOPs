@@ -1,7 +1,7 @@
 import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from backend.app.routes import eda_route
+from app.routes import eda_route, predict_route
 
 # Cấu hình logging
 logging.basicConfig(
@@ -19,15 +19,16 @@ app = FastAPI(
 # Cấu hình CORS để Frontend (HTML/JS) gọi được API từ cổng khác
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # Trong thực tế nên giới hạn domain cụ thể
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Đăng ký các router
-app.include_router(eda_route.router, prefix="/api/v1")
+# Đăng ký router theo quy ước chung: prefix được khai báo trong từng route file.
+app.include_router(eda_route.router)
+app.include_router(predict_route.router)
 
 @app.get("/")
-def read_root():
-    return {"message": "Chào mừng đến với API dự đoán rời bỏ dịch vụ khách hàng!"}
+def health_check():
+    return {"status": "ok", "message": "Churn Prediction API is running"}

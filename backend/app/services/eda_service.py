@@ -13,12 +13,12 @@ class EDAService:
         Khởi tạo service và load dữ liệu từ file CSV.
         Đồng thời thực hiện một số bước tiền xử lý cơ bản như trong notebook.
         """
-        logger.info(f"Khởi tạo EDAService. Đang tải dữ liệu từ: {data_path}...")
+        logger.info("Khởi tạo EDAService. Đang tải dữ liệu từ: %s...", data_path)
         try:
             self.df = pd.read_csv(data_path)
-            logger.info(f"Tải dữ liệu thành công. Kích thước tập dữ liệu: {self.df.shape}")
+            logger.info("Tải dữ liệu thành công. Kích thước tập dữ liệu: %s", self.df.shape)
         except Exception as e:
-            logger.error(f"Lỗi khi tải file dữ liệu từ {data_path}: {str(e)}")
+            logger.error("Lỗi khi tải file dữ liệu từ %s: %s", data_path, str(e))
             raise e
 
         # Tiền xử lý giống notebook: chuyển đổi SeniorCitizen từ 1/0 thành Yes/No
@@ -47,7 +47,11 @@ class EDAService:
         numerical_cols = self.df.select_dtypes(include='number').drop(columns=['id'], errors='ignore').columns.tolist()
         categorical_cols = self.df.select_dtypes(include=['object']).drop(columns=['Churn'], errors='ignore').columns.tolist()
 
-        logger.info(f"Thành công. Phát hiện {duplicates} dòng trùng lặp và {sum(missing_values.values())} giá trị thiếu.")
+        logger.info(
+            "Thành công. Phát hiện %s dòng trùng lặp và %s giá trị thiếu.",
+            duplicates,
+            sum(missing_values.values()),
+        )
         
         insight = (
             "Kích thước dữ liệu cho thấy tập huấn luyện có nhiều hơn tập test 1 cột (chính là cột Churn - target của dự án). "
@@ -95,7 +99,11 @@ class EDAService:
             
         logger.info("Hoàn tất sanity check.")
         if any(v > 0 for v in numeric_errors.values()) or no_internet_but_has_service > 0:
-            logger.warning(f"Phát hiện lỗi logic dữ liệu: Định lượng={numeric_errors}, Định tính={no_internet_but_has_service}")
+            logger.warning(
+                "Phát hiện lỗi logic dữ liệu: Định lượng=%s, Định tính=%s",
+                numeric_errors,
+                no_internet_but_has_service,
+            )
 
         insight = (
             "Kết quả kiểm định chéo đồng loạt bằng 0 chứng minh tập dữ liệu thô cực kỳ nhất quán, "
@@ -134,7 +142,7 @@ class EDAService:
                     "median": float(self.df[col].median()),
                     "q3": float(self.df[col].quantile(0.75)),
                 }
-        logger.info(f"Tính toán xong thống kê cho các cột: {list(stats.keys())}")
+        logger.info("Tính toán xong thống kê cho các cột: %s", list(stats.keys()))
         
         insight = (
             "Phân tích các biến định lượng cho thấy tenure (thời gian gắn bó) phân bố đều và có độ lệch rất thấp (0.06). "
@@ -154,9 +162,13 @@ class EDAService:
         - Trả về bins và counts (cho Histogram)
         - Trả về danh sách dữ liệu mẫu hoặc phân vị (cho Boxplot)
         """
-        logger.info(f"Tính toán phân phối tần suất định lượng cho cột: {column_name} (bins={bins})")
+        logger.info(
+            "Tính toán phân phối tần suất định lượng cho cột: %s (bins=%s)",
+            column_name,
+            bins,
+        )
         if column_name not in self.df.columns:
-            logger.error(f"Yêu cầu thất bại: cột '{column_name}' không tồn tại trong dataset.")
+            logger.error("Yêu cầu thất bại: cột '%s' không tồn tại trong dataset.", column_name)
             raise ValueError(f"Column {column_name} does not exist.")
             
         data = self.df[column_name].dropna()
@@ -188,9 +200,9 @@ class EDAService:
         Tính toán tần suất và phần trăm của các cột phân loại (bao gồm cả biến Target Churn)
         để vẽ biểu đồ tròn (Pie chart) hoặc biểu đồ cột (Bar chart).
         """
-        logger.info(f"Tính toán phân phối tần suất định tính cho cột: {column_name}")
+        logger.info("Tính toán phân phối tần suất định tính cho cột: %s", column_name)
         if column_name not in self.df.columns:
-            logger.error(f"Yêu cầu thất bại: cột '{column_name}' không tồn tại trong dataset.")
+            logger.error("Yêu cầu thất bại: cột '%s' không tồn tại trong dataset.", column_name)
             raise ValueError(f"Column {column_name} does not exist.")
             
         value_counts = self.df[column_name].value_counts(dropna=False)
@@ -217,7 +229,10 @@ class EDAService:
         - Nếu feature là dạng phân loại: Trả về bảng chéo (cross-tabulation) với Churn.
         - Nếu feature là dạng số: Trả về phân phối của feature đó phân nhóm theo Churn = Yes và Churn = No.
         """
-        logger.info(f"Đang thực hiện phân tích đa biến liên kết giữa cột '{feature_name}' và target 'Churn'...")
+        logger.info(
+            "Đang thực hiện phân tích đa biến liên kết giữa cột '%s' và target 'Churn'...",
+            feature_name,
+        )
         if "Churn" not in self.df.columns or feature_name not in self.df.columns:
             logger.error("Yêu cầu phân tích đa biến thất bại vì thiếu cột Churn hoặc feature.")
             raise ValueError("Churn or feature column missing.")
@@ -235,7 +250,7 @@ class EDAService:
 
         # Kiểm tra kiểu dữ liệu của feature
         if not pd.api.types.is_numeric_dtype(self.df[feature_name]):
-            logger.info(f"Cột '{feature_name}' là biến định tính. Trả về bảng phân tích chéo.")
+            logger.info("Cột '%s' là biến định tính. Trả về bảng phân tích chéo.", feature_name)
             crosstab = pd.crosstab(self.df[feature_name], self.df['Churn'])
             return {
                 "type": "categorical",
@@ -245,7 +260,10 @@ class EDAService:
                 "insight": insight
             }
         else:
-            logger.info(f"Cột '{feature_name}' là biến định lượng. Thực hiện phân nhóm thống kê theo Churn.")
+            logger.info(
+                "Cột '%s' là biến định lượng. Thực hiện phân nhóm thống kê theo Churn.",
+                feature_name,
+            )
             churn_yes = self.df[self.df['Churn'] == 'Yes'][feature_name].dropna()
             churn_no = self.df[self.df['Churn'] == 'No'][feature_name].dropna()
             
@@ -273,7 +291,7 @@ class EDAService:
         valid_cols = [c for c in cols if c in self.df.columns]
         
         corr_matrix = self.df[valid_cols].corr()
-        logger.info(f"Tính toán tương quan thành công cho các cột: {valid_cols}")
+        logger.info("Tính toán tương quan thành công cho các cột: %s", valid_cols)
         
         insight = (
             "Ma trận hệ số tương quan cho thấy TotalCharges tương quan tuyến tính cực kỳ mạnh với tenure (0.82) "
