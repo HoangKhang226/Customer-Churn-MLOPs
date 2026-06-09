@@ -3,29 +3,34 @@
 ## Từ điển Dữ liệu (Data Dictionary)
 Bảng dưới đây mô tả chi tiết 22 đặc trưng trong tập dữ liệu đã được làm sạch, kiến tạo (Feature Engineering) và tối ưu hóa để huấn luyện mô hình Machine Learning.
 
-| STT | Tên cột (Feature) | Loại đặc trưng | Ý nghĩa nghiệp vụ |
+**CÁC ĐẶC TRƯNG TỐI ƯU PHỤC VỤ MACHINE LEARNING**
+
+| Đặc trưng | Kiểu đặc trưng | Mô tả | Ghi chú |
 | :--- | :--- | :--- | :--- |
-| **1** | `churn_flag` | **Biến mục tiêu** | Nhãn khách hàng rời bỏ dịch vụ (`1`: Rời đi, `0`: Ở lại) |
-| **2** | `flag_high_risk_profile` | Cờ rủi ro (Kiến tạo) | Cờ siêu rủi ro tổng hợp (Điểm rủi ro tích lũy cao) |
-| **3** | `flag_electronic_check` | Cờ rủi ro (Kiến tạo) | Khách hàng thanh toán bằng Séc điện tử |
-| **4** | `flag_month_to_month` | Cờ rủi ro (Kiến tạo) | Khách hàng ký hợp đồng gia hạn từng tháng |
-| **5** | `flag_no_online_security`| Cờ rủi ro (Kiến tạo) | Khách hàng không cài đặt bảo mật trực tuyến |
-| **6** | `flag_fiber_optic` | Cờ rủi ro (Kiến tạo) | Khách hàng sử dụng mạng cáp quang |
-| **7** | `flag_no_tech_support` | Cờ rủi ro (Kiến tạo) | Khách hàng không sử dụng dịch vụ hỗ trợ kỹ thuật |
-| **8** | `loyalty_tier` | Thứ bậc (Kiến tạo) | Khoảng thời gian sử dụng dịch vụ (Đã phân cụm/binning từ biến `tenure`) |
-| **9** | `charge_segment` | Thứ bậc (Kiến tạo) | Phân khúc mức chi trả hàng tháng (Đã phân cụm/binning) |
-| **10** | `TotalServices` | Định lượng (Kiến tạo) | Tổng số lượng dịch vụ phụ trợ mà khách hàng sử dụng |
-| **11** | `tenure` | Định lượng gốc | Số tháng khách hàng đã sử dụng dịch vụ của công ty |
-| **12** | `MonthlyCharges` | Định lượng gốc | Số tiền cước phí phải trả hàng tháng |
-| **13** | `SeniorCitizen` | Định tính gốc | Khách hàng có phải là người cao tuổi hay không |
-| **14** | `Partner` | Định tính gốc | Khách hàng có bạn đời/vợ/chồng hay không |
-| **15** | `Dependents` | Định tính gốc | Khách hàng có người phụ thuộc (con cái...) hay không |
-| **16** | `MultipleLines` | Định tính gốc | Khách hàng có đăng ký nhiều đường dây thoại hay không |
-| **17** | `OnlineBackup` | Định tính gốc | Trạng thái sử dụng dịch vụ Sao lưu trực tuyến |
-| **18** | `DeviceProtection` | Định tính gốc | Trạng thái sử dụng dịch vụ Bảo vệ thiết bị |
-| **19** | `StreamingTV` | Định tính gốc | Trạng thái sử dụng dịch vụ Xem TV trực tuyến |
-| **20** | `StreamingMovies` | Định tính gốc | Trạng thái sử dụng dịch vụ Xem phim trực tuyến |
-| **21** | `PaperlessBilling` | Định tính gốc | Trạng thái sử dụng hóa đơn điện tử không giấy |
+| `PhoneService` | Gốc | Dịch vụ điện thoại | **Yes** / **No** |
+| `MultipleLines` | Gốc | Dùng nhiều số điện thoại | **Yes** / **No** / **No phone service** |
+| `InternetService` | Gốc | Loại mạng Internet | **DSL** / **Fiber optic** / **No** |
+| `OnlineSecurity` | Gốc | Gói bảo mật trực tuyến | **Yes** / **No** / **No internet service** |
+| `OnlineBackup` | Gốc | Gói sao lưu đám mây | **Yes** / **No** / **No internet service** |
+| `DeviceProtection` | Gốc | Gói bảo vệ thiết bị | **Yes** / **No** / **No internet service** |
+| `TechSupport` | Gốc | Gói hỗ trợ kỹ thuật | **Yes** / **No** / **No internet service** |
+| `StreamingTV` | Gốc | Xem truyền hình qua mạng | **Yes** / **No** / **No internet service** |
+| `StreamingMovies` | Gốc | Xem phim trực tuyến | **Yes** / **No** / **No internet service** |
+| `Contract` | Gốc | Loại hợp đồng | **Month-to-month** / **One year** / **Two year** |
+| `PaperlessBilling` | Gốc | Hóa đơn điện tử | **Yes** / **No** |
+| `PaymentMethod` | Gốc | Phương thức thanh toán | **Electronic check** / **Mailed check** / **Bank transfer (automatic)** / **Credit card (automatic)** |
+| `churn_flag` | Mục tiêu | Trạng thái rời bỏ (nhị phân) | `Churn` là **Yes** gán **1**, **No** gán **0** |
+| `loyalty_tier` | Phái sinh — Phân khúc | Phân khúc trung thành | Dùng `pd.cut` chia bins `[0, 6, 12, 24, 48, vô cùng]` tương ứng với các nhãn: **Onboarding** / **First Year** / **Second Year** / **Familiar** / **Loyal** |
+| `charge_segment` | Phái sinh — Phân khúc | Phân khúc cước phí | Dùng `pd.cut` chia bins `[0, 35, 70, vô cùng]` tương ứng với các nhãn: **Budget** / **Standard** / **Premium** |
+| `total_active_services` | Phái sinh — Đếm | Tổng số dịch vụ đang dùng | Đếm tổng số lượng nhãn **Yes** của các dịch vụ. Riêng `InternetService` nếu là **DSL** hoặc **Fiber optic** thì đếm là 1, gồm `InternetService`, `OnlineSecurity`, `TechSupport`, `OnlineBackup`, `DeviceProtection`, `StreamingTV`, `StreamingMovies`, `PhoneService`, `MultipleLines`  |
+| `charge_to_tenure_ratio_log` | Phái sinh — Tài chính | Log tỷ lệ áp lực chi phí | Công thức: np.log1p(`MonthlyCharges` / `tenure`) |
+| `average_cost_per_service` | Phái sinh — Tài chính | Đơn giá trung bình mỗi dịch vụ | Công thức: `MonthlyCharges` / `total_active_services` |
+| `security_score` | Phái sinh — Điểm số | Điểm Khiên Bảo vệ đo lường số lớp phòng thủ kỹ thuật | Đếm tổng số lượng nhãn **Yes** của 4 biến: `OnlineSecurity`, `TechSupport`, `OnlineBackup`, `DeviceProtection` (Thang điểm 0-4). Quan trọng: Nếu `InternetService` là **No** thì gán đè thành **-1** |
+| `streaming_score` | Phái sinh — Điểm số | Điểm Giải trí đo lường mức độ sử dụng truyền thông | Đếm tổng số lượng nhãn **Yes** của 2 biến: `StreamingTV`, `StreamingMovies` (Thang điểm 0-2). Quan trọng: Nếu `InternetService` là **No** thì gán đè thành **-1** |
+| `manual_payment` | Phái sinh — Cờ | Khách hàng thanh toán bằng phương thức thủ công | Nếu `PaymentMethod` là **Electronic check** hoặc **Mailed check** gán **1**, các phương thức còn lại gán **0** |
+| `composite_risk_profile` | Phái sinh — Siêu cờ | Tổ hợp rủi ro rời bỏ ở mức đỉnh điểm | Nếu `Contract` là **Month-to-month** ĐỒNG THỜI `InternetService` là **Fiber optic** gán **1**, các trường hợp khác gán **0** |
+| `demographic_profile` | Phái sinh — Biến nén | Phân khúc nhân khẩu học tổng hợp đa biến | Nhóm **Isolated Senior**: `SeniorCitizen`=**1** VÀ `Partner`=**No** VÀ `Dependents`=**No** <br> Nhóm **Supported Senior**: `SeniorCitizen`=**1** VÀ (`Partner`=**Yes** HOẶC `Dependents`=**Yes**) <br> Nhóm **Single Youth**: `SeniorCitizen`=**0** VÀ `Partner`=**No** VÀ `Dependents`=**No** <br> Nhóm **Nuclear Family**: `SeniorCitizen`=**0** VÀ (`Partner`=**Yes** HOẶC `Dependents`=**Yes**) |
+
 
 Dự án dự đoán khách hàng rời bỏ dịch vụ (Customer Churn) sử dụng Machine Learning với kiến trúc MLOps Pipeline hoàn chỉnh.
 
