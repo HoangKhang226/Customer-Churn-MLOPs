@@ -1,7 +1,7 @@
 # Customer Churn Prediction - ML Pipeline
 
 ## Từ điển Dữ liệu (Data Dictionary)
-Bảng dưới đây mô tả chi tiết 22 đặc trưng trong tập dữ liệu đã được làm sạch, kiến tạo (Feature Engineering) và tối ưu hóa để huấn luyện mô hình Machine Learning.
+Bảng dưới đây mô tả chi tiết 23 đặc trưng trong tập dữ liệu đã được làm sạch, kiến tạo **Feature Engineering** và tối ưu hóa để huấn luyện mô hình **Machine Learning**.
 
 **CÁC ĐẶC TRƯNG TỐI ƯU PHỤC VỤ MACHINE LEARNING**
 
@@ -22,7 +22,7 @@ Bảng dưới đây mô tả chi tiết 22 đặc trưng trong tập dữ liệ
 | `churn_flag` | Mục tiêu | Trạng thái rời bỏ (nhị phân) | `Churn` là **Yes** gán **1**, **No** gán **0** |
 | `loyalty_tier` | Phái sinh — Phân khúc | Phân khúc trung thành | Dùng `pd.cut` chia bins `[0, 6, 12, 24, 48, vô cùng]` tương ứng với các nhãn: **Onboarding** / **First Year** / **Second Year** / **Familiar** / **Loyal** |
 | `charge_segment` | Phái sinh — Phân khúc | Phân khúc cước phí | Dùng `pd.cut` chia bins `[0, 35, 70, vô cùng]` tương ứng với các nhãn: **Budget** / **Standard** / **Premium** |
-| `total_active_services` | Phái sinh — Đếm | Tổng số dịch vụ đang dùng | Đếm tổng số lượng nhãn **Yes** của các dịch vụ. Riêng `InternetService` nếu là **DSL** hoặc **Fiber optic** thì đếm là 1, gồm `InternetService`, `OnlineSecurity`, `TechSupport`, `OnlineBackup`, `DeviceProtection`, `StreamingTV`, `StreamingMovies`, `PhoneService`, `MultipleLines`  |
+| `total_active_services` | Phái sinh — Đếm | Tổng số dịch vụ đang dùng | Đếm tổng số lượng nhãn **Yes** của các dịch vụ. Riêng `InternetService` nếu là **DSL** hoặc **Fiber optic** thì đếm là 1. Các biến đếm bao gồm `InternetService`, `OnlineSecurity`, `TechSupport`, `OnlineBackup`, `DeviceProtection`, `StreamingTV`, `StreamingMovies`, `PhoneService`, `MultipleLines`  |
 | `charge_to_tenure_ratio_log` | Phái sinh — Tài chính | Log tỷ lệ áp lực chi phí | Công thức: np.log1p(`MonthlyCharges` / `tenure`) |
 | `average_cost_per_service` | Phái sinh — Tài chính | Đơn giá trung bình mỗi dịch vụ | Công thức: `MonthlyCharges` / `total_active_services` |
 | `security_score` | Phái sinh — Điểm số | Điểm Khiên Bảo vệ đo lường số lớp phòng thủ kỹ thuật | Đếm tổng số lượng nhãn **Yes** của 4 biến: `OnlineSecurity`, `TechSupport`, `OnlineBackup`, `DeviceProtection` (Thang điểm 0-4). Quan trọng: Nếu `InternetService` là **No** thì gán đè thành **-1** |
