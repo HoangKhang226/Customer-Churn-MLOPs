@@ -31,6 +31,8 @@ Bảng dưới đây mô tả chi tiết 23 đặc trưng trong tập dữ liệ
 | `composite_risk_profile` | Phái sinh — Siêu cờ | Tổ hợp rủi ro rời bỏ ở mức đỉnh điểm | Nếu `Contract` là **Month-to-month** ĐỒNG THỜI `InternetService` là **Fiber optic** gán **1**, các trường hợp khác gán **0** |
 | `demographic_profile` | Phái sinh — Biến nén | Phân khúc nhân khẩu học tổng hợp đa biến | Nhóm **Isolated Senior**: `SeniorCitizen`=**1** VÀ `Partner`=**No** VÀ `Dependents`=**No** <br> Nhóm **Supported Senior**: `SeniorCitizen`=**1** VÀ (`Partner`=**Yes** HOẶC `Dependents`=**Yes**) <br> Nhóm **Single Youth**: `SeniorCitizen`=**0** VÀ `Partner`=**No** VÀ `Dependents`=**No** <br> Nhóm **Nuclear Family**: `SeniorCitizen`=**0** VÀ (`Partner`=**Yes** HOẶC `Dependents`=**Yes**) |
 
+## Bảng xếp hạng sức mạnh đặc trưng với rủi ro rời bỏ dịch vụ
+<img width="1185" height="984" alt="image" src="https://github.com/user-attachments/assets/d77d15d9-82d4-440b-b2e9-ae5af5e539d1" />
 
 Dự án dự đoán khách hàng rời bỏ dịch vụ (Customer Churn) sử dụng Machine Learning với kiến trúc MLOps Pipeline hoàn chỉnh.
 
