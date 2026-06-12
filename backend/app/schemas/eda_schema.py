@@ -52,8 +52,12 @@ class NumericalStatsResponse(BaseModel):
     tenure: ColumnStats = Field(..., description="Thống kê mô tả của cột tenure")
     MonthlyCharges: ColumnStats = Field(..., description="Thống kê mô tả của cột MonthlyCharges")
     TotalCharges: ColumnStats = Field(..., description="Thống kê mô tả của cột TotalCharges")
+    total_active_services: ColumnStats = Field(..., description="Thống kê mô tả của cột total_active_services")
+    charge_to_tenure_ratio_log: ColumnStats = Field(..., description="Thống kê mô tả của cột charge_to_tenure_ratio_log")
+    average_cost_per_service: ColumnStats = Field(..., description="Thống kê mô tả của cột average_cost_per_service")
+    security_score: ColumnStats = Field(..., description="Thống kê mô tả của cột security_score")
+    streaming_score: ColumnStats = Field(..., description="Thống kê mô tả của cột streaming_score")
     insight: str = Field(..., description="Đoạn văn nhận xét phân bố định lượng")
-
 
 # --- 4. Schema cho get_numerical_distribution ---
 class BoxplotData(BaseModel):

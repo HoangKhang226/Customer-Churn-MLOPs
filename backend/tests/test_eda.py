@@ -50,6 +50,11 @@ class FakeEDAService:
             "tenure": stats,
             "MonthlyCharges": stats,
             "TotalCharges": stats,
+            "total_active_services": stats,
+            "charge_to_tenure_ratio_log": stats,
+            "average_cost_per_service": stats,
+            "security_score": stats,
+            "streaming_score": stats,
             "insight": "Numerical stats insight",
         }
 

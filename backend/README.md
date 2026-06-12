@@ -73,14 +73,14 @@ Dưới đây là chi tiết các trường dữ liệu và gợi ý cách vẽ 
 
 ### 🧮 3. Thống kê mô tả các cột số (Descriptive Statistics)
 *   **Endpoint:** `GET /api/v1/eda/numerical-stats`
-*   **Ý nghĩa các trường trong Response:** Trả về thống kê của 3 cột số quan trọng (`tenure`, `MonthlyCharges`, `TotalCharges`). Mỗi cột là một Object chứa các trường:
+*   **Ý nghĩa các trường trong Response:** Trả về thống kê mô tả của các cột số gốc và cột số phái sinh (`tenure`, `MonthlyCharges`, `TotalCharges`, `total_active_services`, `charge_to_tenure_ratio_log`, `average_cost_per_service`, `security_score`, `streaming_score`). Mỗi cột là một Object chứa các trường:
     *   `mean`: Giá trị trung bình của cột.
     *   `min` / `max`: Giá trị nhỏ nhất / lớn nhất.
     *   `q1` / `median` / `q3`: Phân vị 25% / Trung vị (50%) / Phân vị 75%.
     *   `variance`: Phương sai dữ liệu.
     *   `skewness`: Độ lệch phân phối (nếu `> 0` lệch phải, `< 0` lệch trái, `= 0` đối xứng).
     *   `nunique`: Số lượng giá trị duy nhất (độc nhất).
-*   **💡 Lưu ý Frontend:** Thiết kế một bảng dữ liệu (Data Table) với các hàng là tên cột (`tenure`, `MonthlyCharges`, `TotalCharges`) và các cột là các chỉ số thống kê trên để hiển thị so sánh.
+*   **💡 Lưu ý Frontend:** Thiết kế một bảng dữ liệu (Data Table) động với các hàng tương ứng với các cột số nêu trên và các cột là các chỉ số thống kê tương ứng để hiển thị so sánh.
 
 ---
 
@@ -131,9 +131,9 @@ Dưới đây là chi tiết các trường dữ liệu và gợi ý cách vẽ 
 ### 🌡️ 7. Ma trận tương quan (Correlation Matrix)
 *   **Endpoint:** `GET /api/v1/eda/correlation`
 *   **Ý nghĩa các trường trong Response:**
-    *   `columns` (List[Str]): Danh sách các cột số trong ma trận (`["tenure", "MonthlyCharges", "TotalCharges"]`).
+    *   `columns` (List[Str]): Danh sách các cột số trong ma trận (`["tenure", "MonthlyCharges", "TotalCharges", "total_active_services", "charge_to_tenure_ratio_log", "average_cost_per_service", "security_score", "streaming_score"]`).
     *   `index` (List[Str]): Danh sách nhãn hàng (tương tự như `columns`).
-    *   `values` (List[List[Float]]): Mảng 2 chiều kích thước `NxN` chứa hệ số tương quan tuyến tính (Pearson r) có giá trị từ `-1.0` đến `1.0`.
+    *   `values` (List[List[Float]]): Mảng 2 chiều kích thước `NxN` chứa hệ số tương quan tuyến tính (Pearson r) giữa các cặp cột số.
 *   **💡 Lưu ý Frontend:** Vẽ biểu đồ nhiệt **Heatmap (Correlation Matrix)**. Sử dụng dải màu tương phản (ví dụ: màu đỏ cho tương quan dương mạnh `+1.0`, màu xanh cho tương quan âm mạnh `-1.0`, và màu trắng/trung tính cho không tương quan `0.0`). Hiển thị trị số hệ số tương quan lên từng ô.
 
 ---

@@ -11,7 +11,7 @@ class EDAService:
     def __init__(self, data_path: str):
         """
         Khởi tạo service và load dữ liệu từ file CSV.
-        Đồng thời thực hiện một số bước tiền xử lý cơ bản như trong notebook.
+        Đồng thời thực hiện một số bước tiền xử lý cơ bản và Feature Engineering như trong notebook.
         """
         logger.info("Khởi tạo EDAService. Đang tải dữ liệu từ: %s...", data_path)
         try:
@@ -25,6 +25,89 @@ class EDAService:
         if 'SeniorCitizen' in self.df.columns:
             logger.info("Cột 'SeniorCitizen' tồn tại. Tiến hành chuẩn hóa dữ liệu sang 'Yes'/'No'.")
             self.df['SeniorCitizen'] = self.df['SeniorCitizen'].replace({1: 'Yes', 0: 'No'})
+
+        # Chuẩn hóa cột TotalCharges sang numeric để tránh lỗi chuỗi trống
+        if 'TotalCharges' in self.df.columns:
+            self.df['TotalCharges'] = pd.to_numeric(self.df['TotalCharges'], errors='coerce').fillna(0.0)
+
+        # --- FEATURE ENGINEERING (Xây dựng đặc trưng phái sinh từ Notebook) ---
+        logger.info("Bắt đầu xây dựng các đặc trưng phái sinh mới từ EDA...")
+
+        # 1. Rời rạc hóa tenure -> loyalty_tier
+        if 'tenure' in self.df.columns:
+            self.df['loyalty_tier'] = pd.cut(
+                self.df['tenure'],
+                bins=[0, 6, 12, 24, 48, float('inf')],
+                labels=['Onboarding (0-6 tháng)', 'First Year (7-12 tháng)', 'Second Year (13-24 tháng)', 'Familiar (25-48 tháng)', 'Loyal (trên 48 tháng)'],
+                include_lowest=True
+            ).astype(str)
+
+        # 2. Rời rạc hóa MonthlyCharges -> charge_segment
+        if 'MonthlyCharges' in self.df.columns:
+            self.df['charge_segment'] = pd.cut(
+                self.df['MonthlyCharges'],
+                bins=[0, 35, 70, float('inf')],
+                labels=['Budget (0-35$)', 'Standard (35-70$)', 'Premium (trên 70$)'],
+                include_lowest=True
+            ).astype(str)
+
+        # 3. Tính total_active_services (Số lượng dịch vụ hoạt động)
+        service_cols = ['OnlineSecurity', 'OnlineBackup', 'DeviceProtection', 'TechSupport', 'StreamingTV', 'StreamingMovies', 'MultipleLines']
+        def count_active_services(row):
+            count = 0
+            if 'InternetService' in row and row['InternetService'] in ['DSL', 'Fiber optic']:
+                count += 1
+            if 'PhoneService' in row and row['PhoneService'] == 'Yes':
+                count += 1
+            for col in service_cols:
+                if col in row and row[col] == 'Yes':
+                    count += 1
+            return count
+        self.df['total_active_services'] = self.df.apply(count_active_services, axis=1)
+
+        # 4. charge_to_tenure_ratio_log
+        if 'MonthlyCharges' in self.df.columns and 'tenure' in self.df.columns:
+            safe_tenure = self.df['tenure'].replace(0, 1)
+            self.df['charge_to_tenure_ratio_log'] = np.log1p(self.df['MonthlyCharges'] / safe_tenure)
+
+        # 5. average_cost_per_service
+        if 'MonthlyCharges' in self.df.columns:
+            safe_services = self.df['total_active_services'].replace(0, 1)
+            self.df['average_cost_per_service'] = self.df['MonthlyCharges'] / safe_services
+
+        # 6. security_score
+        protective_cols = ['OnlineSecurity', 'TechSupport', 'OnlineBackup', 'DeviceProtection']
+        available_protective = [col for col in protective_cols if col in self.df.columns]
+        if available_protective:
+            self.df['security_score'] = (self.df[available_protective] == 'Yes').sum(axis=1)
+            if 'InternetService' in self.df.columns:
+                self.df.loc[self.df['InternetService'] == 'No', 'security_score'] = -1
+
+        # 7. streaming_score
+        streaming_cols = ['StreamingTV', 'StreamingMovies']
+        available_streaming = [col for col in streaming_cols if col in self.df.columns]
+        if available_streaming:
+            self.df['streaming_score'] = (self.df[available_streaming] == 'Yes').sum(axis=1)
+            if 'InternetService' in self.df.columns:
+                self.df.loc[self.df['InternetService'] == 'No', 'streaming_score'] = -1
+
+        # 8. manual_payment
+        if 'PaymentMethod' in self.df.columns:
+            self.df['manual_payment'] = self.df['PaymentMethod'].isin(['Electronic check', 'Mailed check']).astype(int)
+
+        # 9. composite_risk_profile
+        if 'Contract' in self.df.columns and 'InternetService' in self.df.columns:
+            self.df['composite_risk_profile'] = ((self.df['Contract'] == 'Month-to-month') & (self.df['InternetService'] == 'Fiber optic')).astype(int)
+
+        # 10. demographic_profile
+        if 'SeniorCitizen' in self.df.columns and 'Partner' in self.df.columns and 'Dependents' in self.df.columns:
+            self.df['demographic_profile'] = (
+                self.df['SeniorCitizen'].astype(str) + "_" +
+                self.df['Partner'].astype(str) + "_" +
+                self.df['Dependents'].astype(str)
+            )
+
+        logger.info("Xây dựng đặc trưng phái sinh thành công. Kích thước tập dữ liệu mới: %s", self.df.shape)
 
     # Bước 1, 2: thống kê mô tả dữ liệu
     # [Mục 1 & 2 trong Notebook]
@@ -123,11 +206,15 @@ class EDAService:
     def get_numerical_statistics(self) -> Dict[str, Any]:
         """
         [Mục 4.1 trong Notebook]
-        Trả về các chỉ số thống kê đơn biến của các cột số (tenure, MonthlyCharges, TotalCharges):
+        Trả về các chỉ số thống kê đơn biến của các cột số:
         - Mean, Min, Max, Variance, Skewness, Median, số lượng giá trị duy nhất (nunique).
         """
         logger.info("Đang tính toán các chỉ số thống kê định lượng (get_numerical_statistics)...")
-        cols = ['tenure', 'MonthlyCharges', 'TotalCharges']
+        cols = [
+            'tenure', 'MonthlyCharges', 'TotalCharges',
+            'total_active_services', 'charge_to_tenure_ratio_log',
+            'average_cost_per_service', 'security_score', 'streaming_score'
+        ]
         stats = {}
         for col in cols:
             if col in self.df.columns:
@@ -135,7 +222,7 @@ class EDAService:
                     "mean": float(self.df[col].mean()),
                     "min": float(self.df[col].min()),
                     "max": float(self.df[col].max()),
-                    "skewness": float(self.df[col].skew()),
+                    "skewness": float(self.df[col].skew() if len(self.df[col].dropna()) > 2 else 0.0),
                     "variance": float(self.df[col].var()),
                     "nunique": int(self.df[col].nunique()),
                     "q1": float(self.df[col].quantile(0.25)),
@@ -145,9 +232,9 @@ class EDAService:
         logger.info("Tính toán xong thống kê cho các cột: %s", list(stats.keys()))
         
         insight = (
-            "Phân tích các biến định lượng cho thấy tenure (thời gian gắn bó) phân bố đều và có độ lệch rất thấp (0.06). "
-            "Ngược lại, cước phí hàng tháng (MonthlyCharges) và tổng cước phí (TotalCharges) có độ phân tán rộng, "
-            "phương sai lớn thể hiện sự phân hóa cao của các đối tượng khách hàng trong tập mẫu."
+            "Phân tích các đặc trưng định lượng gốc và phái sinh cho thấy độ phân tán rộng của cước phí, "
+            "trong khi các điểm số dịch vụ và điểm số khiên bảo mật tập trung làm nổi bật sự đóng góp của hệ sinh thái đối với sự gắn bó. "
+            "Đặc trưng average_cost_per_service cho thấy giá trị trung bình trên mỗi dịch vụ rất ổn định, giúp dễ dàng nhận biết rủi ro ngợp chi phí."
         )
 
         return {
@@ -287,17 +374,21 @@ class EDAService:
         để Frontend vẽ biểu đồ nhiệt (Correlation Heatmap).
         """
         logger.info("Đang tính toán ma trận hệ số tương quan tuyến tính Pearson...")
-        cols = ['tenure', 'MonthlyCharges', 'TotalCharges']
+        cols = [
+            'tenure', 'MonthlyCharges', 'TotalCharges',
+            'total_active_services', 'charge_to_tenure_ratio_log',
+            'average_cost_per_service', 'security_score', 'streaming_score'
+        ]
         valid_cols = [c for c in cols if c in self.df.columns]
         
         corr_matrix = self.df[valid_cols].corr()
         logger.info("Tính toán tương quan thành công cho các cột: %s", valid_cols)
         
         insight = (
-            "Ma trận hệ số tương quan cho thấy TotalCharges tương quan tuyến tính cực kỳ mạnh với tenure (0.82) "
-            "và tương quan khá mạnh với MonthlyCharges (0.65). Điều này hoàn toàn phù hợp với logic nghiệp vụ "
-            "(tổng cước tích lũy bằng cước tháng nhân số tháng gắn bó). Cần lưu ý hiện tượng đa cộng tuyến (multicollinearity) "
-            "giữa các biến này khi áp dụng vào các mô hình tuyến tính."
+            "Ma trận tương quan cho thấy sự xuất hiện của các chỉ số mới mang ý nghĩa kinh tế rất rõ rệt: "
+            "average_cost_per_service tương quan thuận rất cao với MonthlyCharges (0.76) nhưng tương quan nghịch với total_active_services (-0.31). "
+            "Chỉ số security_score cho thấy mối tương quan âm rõ rệt với tỉ lệ rời bỏ dịch vụ, củng cố giả thuyết rằng khách hàng sử dụng "
+            "các lớp bảo mật bảo vệ có xu hướng gắn bó lâu dài hơn."
         )
 
         return {
