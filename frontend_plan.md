@@ -42,7 +42,7 @@ Cập nhật file `src/routes.js` để hiển thị menu 3 tính năng:
 
 ## 🛠️ Chi tiết Kế hoạch 3 Tính năng chính
 
-### 📊 Tính năng 1: Giao diện Trực quan hóa dữ liệu (EDA Dashboard)
+### 📊 Tính năng 1: Giao diện Trực quan hóa dữ liệu (EDA Dashboard) (Bảo)
 *Giao diện nhận dữ liệu từ các API `GET /api/v1/eda/...` để hiển thị biểu đồ và nhận xét (insight).*
 
 #### 1. Bố cục trang (Layout Dashboard):
@@ -65,7 +65,7 @@ Cập nhật file `src/routes.js` để hiển thị menu 3 tính năng:
 
 ---
 
-### 🔮 Tính năng 2: Giao diện Dự đoán Churn đơn lẻ (Churn Prediction)
+### 🔮 Tính năng 2: Giao diện Dự đoán Churn đơn lẻ (Churn Prediction) (Phát)
 *Nhận thông tin 1 khách hàng từ form nhập liệu, gửi request POST lên `/api/v1/predict` (hoặc endpoint tương tự của Phát) và hiển thị kết quả dự đoán kèm xác suất.*
 
 #### 1. Thiết kế Form Nhập liệu (Customer Profile Input Form):
@@ -96,7 +96,7 @@ Hiển thị ngay bên cạnh hoặc phía dưới form sau khi người dùng b
 
 ---
 
-### ⚖️ Tính năng 3: Giao diện So sánh & Huấn luyện Mô hình (Model Comparison)
+### ⚖️ Tính năng 3: Giao diện So sánh & Huấn luyện Mô hình (Model Comparison) (Lan Anh)
 *Giao diện tương tác gửi các tham số huấn luyện lên API `/api/v1/compare-models` (hoặc endpoint tương ứng của Khang) để tiến hành huấn luyện nhanh và đối chiếu các thuật toán.*
 
 #### 1. Bộ cấu hình tham số Huấn luyện (Training Panel):
