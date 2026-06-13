@@ -33,26 +33,32 @@ class ChurnFeatureEngineer(BaseEstimator, TransformerMixin):
         #    Labels: 0=Onboarding, 1=First Year, 2=Second Year,
         #            3=Familiar, 4=Loyal
         # ------------------------------------------------------------------
+        # Dùng astype(float) thay vì astype(int)
+        # Nếu tenure có NaN, pd.cut trả về NaN → astype(int) crash với ValueError.
+        # astype(float) giữ nguyên NaN để SimpleImputer(median) ở bước sau xử lý đúng.
         X["loyalty_tier"] = pd.cut(
             X["tenure"],
             bins=[0, 6, 12, 24, 48, np.inf],
             labels=[0, 1, 2, 3, 4],
             right=True,
             include_lowest=True,
-        ).astype(int)
+        ).astype(float)
 
         # ------------------------------------------------------------------
         # 2. charge_segment — Phân khúc cước phí hàng tháng
         #    Bins: [0, 35, 70, +inf]
         #    Labels: 0=Budget, 1=Standard, 2=Premium
         # ------------------------------------------------------------------
+        # Dùng astype(float) thay vì astype(int)
+        # Nếu tenure có NaN, pd.cut trả về NaN → astype(int) crash với ValueError.
+        # astype(float) giữ nguyên NaN để SimpleImputer(median) ở bước sau xử lý đúng.
         X["charge_segment"] = pd.cut(
             X["MonthlyCharges"],
             bins=[0, 35, 70, np.inf],
             labels=[0, 1, 2],
             right=True,
             include_lowest=True,
-        ).astype(int)
+        ).astype(float)
 
         # ------------------------------------------------------------------
         # 3. total_active_services — Tổng số dịch vụ đang sử dụng
@@ -78,9 +84,17 @@ class ChurnFeatureEngineer(BaseEstimator, TransformerMixin):
         #    Công thức: np.log1p(MonthlyCharges / tenure)
         #    tenure=0 → tránh chia 0 bằng replace(0, NaN) rồi fillna(0)
         # ------------------------------------------------------------------
-        X["charge_to_tenure_ratio_log"] = np.log1p(
-            X["MonthlyCharges"] / X["tenure"].replace(0, np.nan)
-        ).fillna(0)
+        # Tách biệt hai loại NaN:
+        #   (a) tenure=0 (thiết kế): tránh chia-cho-0, kết quả log1p(NaN) cần gán về 0.
+        #   (b) MonthlyCharges thực sự khuyết (NaN thật): GIỮ NGUYÊN NaN để
+        #       SimpleImputer(strategy="median") ở bước sau điền đúng giá trị.
+        # Cách làm: tính tỷ lệ, sau đó chỉ fillna(0) ở những dòng mà tenure=0.
+        _tenure_safe = X["tenure"].replace(0, np.nan)  # tenure=0 → NaN
+        _ratio_log   = np.log1p(X["MonthlyCharges"] / _tenure_safe)
+        # Chỉ gán 0 khi NaN bắt nguồn từ tenure=0; NaN thật (MonthlyCharges thiếu) vẫn là NaN.
+        X["charge_to_tenure_ratio_log"] = _ratio_log.where(
+            ~(X["tenure"] == 0), other=0
+        )
 
         # ------------------------------------------------------------------
         # 5. average_cost_per_service — Đơn giá trung bình mỗi dịch vụ
