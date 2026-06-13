@@ -14,58 +14,150 @@ from src.entity.config_entity import DataTransformationConfig
 from src.utils.common import logger
 
 
-# Transformer tạo feature mới từ kết quả EDA
-# Không có trạng thái (stateless): fit() không làm gì, chỉ transform() tạo cột mới
-# Phải đặt TRƯỚC ColumnTransformer trong Pipeline để các cột mới được xử lý tiếp theo
+# =============================================================================
+# Transformer tạo 10 đặc trưng phái sinh từ kết quả EDA
+# Stateless: fit() không làm gì, chỉ transform() tạo các cột mới
+# Phải đặt TRƯỚC ColumnTransformer để các cột mới được xử lý tiếp theo
+# =============================================================================
 class ChurnFeatureEngineer(BaseEstimator, TransformerMixin):
 
     def fit(self, X, y=None):
-        # Không cần học gì từ dữ liệu, trả về chính nó
         return self
 
     def transform(self, X, y=None):
         X = X.copy()
 
-        # Tỷ lệ chi phí trên số tháng sử dụng - tỷ lệ cao cho thấy áp lực chi phí lớn, churn risk 87.1%
-        X["charge_to_tenure_ratio"] = X["MonthlyCharges"] / (X["tenure"] + 1)
+        # ------------------------------------------------------------------
+        # 1. loyalty_tier — Phân khúc trung thành
+        #    Bins: [0, 6, 12, 24, 48, +inf]
+        #    Labels: 0=Onboarding, 1=First Year, 2=Second Year,
+        #            3=Familiar, 4=Loyal
+        # ------------------------------------------------------------------
+        X["loyalty_tier"] = pd.cut(
+            X["tenure"],
+            bins=[0, 6, 12, 24, 48, np.inf],
+            labels=[0, 1, 2, 3, 4],
+            right=True,
+            include_lowest=True,
+        ).astype(int)
 
-        # Hồ sơ rủi ro cao - khách hàng hợp đồng tháng và thanh toán Electronic check có churn trên 40%
-        X["is_high_risk_profile"] = (
+        # ------------------------------------------------------------------
+        # 2. charge_segment — Phân khúc cước phí hàng tháng
+        #    Bins: [0, 35, 70, +inf]
+        #    Labels: 0=Budget, 1=Standard, 2=Premium
+        # ------------------------------------------------------------------
+        X["charge_segment"] = pd.cut(
+            X["MonthlyCharges"],
+            bins=[0, 35, 70, np.inf],
+            labels=[0, 1, 2],
+            right=True,
+            include_lowest=True,
+        ).astype(int)
+
+        # ------------------------------------------------------------------
+        # 3. total_active_services — Tổng số dịch vụ đang sử dụng
+        #    Đếm "Yes" của 7 dịch vụ tùy chọn +
+        #    InternetService (DSL hoặc Fiber optic = 1) +
+        #    PhoneService (Yes = 1) +
+        #    MultipleLines (Yes = 1)
+        # ------------------------------------------------------------------
+        X["total_active_services"] = (
+            (X["InternetService"].isin(["DSL", "Fiber optic"])).astype(int)
+            + (X["OnlineSecurity"]   == "Yes").astype(int)
+            + (X["TechSupport"]      == "Yes").astype(int)
+            + (X["OnlineBackup"]     == "Yes").astype(int)
+            + (X["DeviceProtection"] == "Yes").astype(int)
+            + (X["StreamingTV"]      == "Yes").astype(int)
+            + (X["StreamingMovies"]  == "Yes").astype(int)
+            + (X["PhoneService"]     == "Yes").astype(int)
+            + (X["MultipleLines"]    == "Yes").astype(int)
+        )
+
+        # ------------------------------------------------------------------
+        # 4. charge_to_tenure_ratio_log — Log áp lực chi phí
+        #    Công thức: np.log1p(MonthlyCharges / tenure)
+        #    tenure=0 → tránh chia 0 bằng replace(0, NaN) rồi fillna(0)
+        # ------------------------------------------------------------------
+        X["charge_to_tenure_ratio_log"] = np.log1p(
+            X["MonthlyCharges"] / X["tenure"].replace(0, np.nan)
+        ).fillna(0)
+
+        # ------------------------------------------------------------------
+        # 5. average_cost_per_service — Đơn giá trung bình mỗi dịch vụ
+        #    Công thức: MonthlyCharges / total_active_services
+        #    total_active_services=0 → fillna(0)
+        # ------------------------------------------------------------------
+        X["average_cost_per_service"] = (
+            X["MonthlyCharges"] / X["total_active_services"].replace(0, np.nan)
+        ).fillna(0)
+
+        # ------------------------------------------------------------------
+        # 6. security_score — Điểm Khiên Bảo vệ (thang [-1, 0..4])
+        #    Đếm "Yes" trong 4 dịch vụ bảo vệ/hỗ trợ
+        #    InternetService = "No" → gán đè thành -1
+        # ------------------------------------------------------------------
+        protective_cols = [
+            "OnlineSecurity", "TechSupport",
+            "OnlineBackup", "DeviceProtection",
+        ]
+        X["security_score"] = (X[protective_cols] == "Yes").sum(axis=1)
+        X.loc[X["InternetService"] == "No", "security_score"] = -1
+
+        # ------------------------------------------------------------------
+        # 7. streaming_score — Điểm Giải trí (thang [-1, 0..2])
+        #    Đếm "Yes" trong StreamingTV và StreamingMovies
+        #    InternetService = "No" → gán đè thành -1
+        # ------------------------------------------------------------------
+        X["streaming_score"] = (
+            X[["StreamingTV", "StreamingMovies"]] == "Yes"
+        ).sum(axis=1)
+        X.loc[X["InternetService"] == "No", "streaming_score"] = -1
+
+        # ------------------------------------------------------------------
+        # 8. manual_payment — Cờ thanh toán thủ công (0/1)
+        #    1 nếu PaymentMethod là "Electronic check" hoặc "Mailed check"
+        # ------------------------------------------------------------------
+        X["manual_payment"] = X["PaymentMethod"].isin(
+            ["Electronic check", "Mailed check"]
+        ).astype(int)
+
+        # ------------------------------------------------------------------
+        # 9. composite_risk_profile — Siêu cờ tổ hợp rủi ro đỉnh điểm (0/1)
+        #    1 nếu Contract="Month-to-month" ĐỒNG THỜI InternetService="Fiber optic"
+        # ------------------------------------------------------------------
+        X["composite_risk_profile"] = (
             (X["Contract"] == "Month-to-month") &
-            (X["PaymentMethod"] == "Electronic check")
+            (X["InternetService"] == "Fiber optic")
         ).astype(int)
 
-        # Cờ hiệu churn sớm - phân phối KDE của nhóm Churn=Yes tập trung ở tenure thấp (dưới 5 tháng)
-        X["early_churn_flag"] = (X["tenure"] <= 5).astype(int)
+        # ------------------------------------------------------------------
+        # 10. demographic_profile — Phân khúc nhân khẩu học (0–3)
+        #     0 = Single Youth    : SeniorCitizen=No  AND Partner=No  AND Dependents=No
+        #     1 = Nuclear Family  : SeniorCitizen=No  AND (Partner=Yes OR Dependents=Yes)
+        #     2 = Isolated Senior : SeniorCitizen=Yes AND Partner=No  AND Dependents=No
+        #     3 = Supported Senior: SeniorCitizen=Yes AND (Partner=Yes OR Dependents=Yes)
+        # ------------------------------------------------------------------
+        is_senior   = X["SeniorCitizen"] == 1
+        has_support = (X["Partner"] == "Yes") | (X["Dependents"] == "Yes")
 
-        # Đếm số dịch vụ hỗ trợ mà khách hàng đang dùng - càng nhiều dịch vụ càng khó rời đi
-        utility_cols = ["OnlineSecurity", "TechSupport", "OnlineBackup", "DeviceProtection"]
-        for col in utility_cols:
-            X[col] = X[col].map({"Yes": 1, "No": 0, "No internet service": 0}).fillna(0)
-        X["utility_services_count"] = X[utility_cols].sum(axis=1)
-
-        # Đếm số dịch vụ streaming - gộp lại để giảm đa cộng tuyến giữa StreamingTV và StreamingMovies (tương quan 0.66)
-        streaming_cols = ["StreamingTV", "StreamingMovies"]
-        for col in streaming_cols:
-            X[col] = X[col].map({"Yes": 1, "No": 0, "No internet service": 0}).fillna(0)
-        X["streaming_count"] = X[streaming_cols].sum(axis=1)
-
-        # Gộp Partner và Dependents thành một biến - hai biến này tương quan cao với nhau
-        X["has_family"] = (
-            (X["Partner"] == "Yes") | (X["Dependents"] == "Yes")
-        ).astype(int)
-
-        # Biến nhị phân cho hợp đồng tháng - đây là biến phân tách churn mạnh nhất (spread 41%)
-        X["is_month_to_month"] = (X["Contract"] == "Month-to-month").astype(int)
-
-        # Biến nhị phân cho Fiber optic - nhóm này có churn rate cao nhất 41.5%
-        X["is_fiber_optic"] = (X["InternetService"] == "Fiber optic").astype(int)
+        X["demographic_profile"] = np.select(
+            condlist=[
+                ~is_senior & ~has_support,   # 0: Single Youth
+                ~is_senior &  has_support,   # 1: Nuclear Family
+                 is_senior & ~has_support,   # 2: Isolated Senior
+                 is_senior &  has_support,   # 3: Supported Senior
+            ],
+            choicelist=[0, 1, 2, 3],
+            default=0,
+        )
 
         return X
 
 
+# =============================================================================
 # Transformer cắt bớt outlier bằng phương pháp Winsorization
 # fit() học ngưỡng cắt từ tập train, transform() áp dụng cho cả train và test
+# =============================================================================
 class WinsorizerTransformer(BaseEstimator, TransformerMixin):
 
     def __init__(self, lower_pct=0.01, upper_pct=0.99):
@@ -92,51 +184,78 @@ class WinsorizerTransformer(BaseEstimator, TransformerMixin):
         return X
 
 
+# =============================================================================
 # Class chính của Stage 03, được gọi bởi src/pipeline/stage_03_data_transformation.py
+# =============================================================================
 class DataTransformation:
 
+    # -----------------------------------------------------------------------
     # Các cột bị loại bỏ trước khi đưa vào pipeline
+    # -----------------------------------------------------------------------
     COLS_TO_DROP = [
-        "id",           # chỉ là ID của Kaggle, không chứa thông tin dự báo
-        "TotalCharges", # đa cộng tuyến quá cao với tenure (0.77) và MonthlyCharges (0.63)
-        "gender",       # spread churn chỉ 0.57%, không có giá trị dự báo
+        "id",                      # Mã định danh, không có giá trị dự báo
+        "gender",                  # Zero-Signal: spread churn không đáng kể
+        "TotalCharges",            # Đa cộng tuyến nghiêm trọng với tenure
+        "tenure",                  # Đã thay thế bởi loyalty_tier
+        "MonthlyCharges",          # Đã thay thế bởi charge_segment
+        "SeniorCitizen",           # Đã nén vào demographic_profile
+        "Partner",                 # Đã nén vào demographic_profile
+        "Dependents",              # Đã nén vào demographic_profile
+        "bill_shock_ratio",        # Zero-Signal: không có khả năng phân tách
+        "zero_supportive_service", # Đa cộng tuyến hoàn hảo (V=1.00) với security_score
     ]
 
-    # Các cột số được xử lý qua Winsorizer rồi StandardScaler
-    # Bao gồm cả 3 feature mới tạo ra từ ChurnFeatureEngineer
+    # -----------------------------------------------------------------------
+    # Cột số: SimpleImputer(median) → WinsorizerTransformer → StandardScaler
+    # Gồm 5 feature phái sinh dạng liên tục/thứ bậc số
+    # -----------------------------------------------------------------------
     NUMERIC_COLS = [
-        "tenure",
-        "MonthlyCharges",
-        "charge_to_tenure_ratio",
-        "utility_services_count",
-        "streaming_count",
+        "charge_to_tenure_ratio_log",  # Log áp lực chi phí
+        "average_cost_per_service",    # Đơn giá trung bình/dịch vụ
+        "total_active_services",       # Tổng số dịch vụ đang dùng (0–9)
+        "security_score",              # Điểm Khiên Bảo vệ (-1 đến 4)
+        "streaming_score",             # Điểm Giải trí (-1 đến 2)
     ]
 
-    # Các cột phân loại còn lại sau khi đã gộp các biến tương quan thành feature mới
-    # OnlineSecurity, TechSupport, OnlineBackup, DeviceProtection đã được gộp vào utility_services_count
-    # StreamingTV, StreamingMovies đã được gộp vào streaming_count
+    # -----------------------------------------------------------------------
+    # Cột phân loại gốc nhiều nhãn: SimpleImputer → OneHotEncoder(drop='first')
+    # -----------------------------------------------------------------------
     CATEGORICAL_COLS = [
-        "MultipleLines",
-        "InternetService",
-        "Contract",
-        "PaymentMethod",
+        "MultipleLines",     # Yes / No / No phone service
+        "InternetService",   # DSL / Fiber optic / No
+        "OnlineSecurity",    # Yes / No / No internet service
+        "OnlineBackup",      # Yes / No / No internet service
+        "DeviceProtection",  # Yes / No / No internet service
+        "TechSupport",       # Yes / No / No internet service
+        "StreamingTV",       # Yes / No / No internet service
+        "StreamingMovies",   # Yes / No / No internet service
+        "Contract",          # Month-to-month / One year / Two year
+        "PaymentMethod",     # 4 phương thức thanh toán
     ]
 
-    # Các cột nhị phân Yes/No được mã hóa bằng OneHotEncoder drop='first' thành 0/1
+    # -----------------------------------------------------------------------
+    # Cột nhị phân Yes/No gốc: SimpleImputer → OneHotEncoder(drop='first')
+    # -----------------------------------------------------------------------
     BINARY_COLS = [
-        "Partner",
-        "Dependents",
-        "PhoneService",
-        "PaperlessBilling",
+        "PhoneService",      # Yes / No
+        "PaperlessBilling",  # Yes / No
     ]
 
-    # Các feature nhị phân đã được tạo sẵn bởi ChurnFeatureEngineer, giá trị đã là 0/1
+    # -----------------------------------------------------------------------
+    # Cột thứ bậc phái sinh (ordinal): chỉ SimpleImputer
+    # -----------------------------------------------------------------------
+    ORDINAL_COLS = [
+        "loyalty_tier",        # 0–4 thứ bậc trung thành
+        "charge_segment",      # 0–2 phân khúc cước phí
+        "demographic_profile", # 0–3 phân khúc nhân khẩu học
+    ]
+
+    # -----------------------------------------------------------------------
+    # Cột nhị phân phái sinh (0/1): chỉ SimpleImputer
+    # -----------------------------------------------------------------------
     ENGINEERED_BINARY_COLS = [
-        "is_high_risk_profile",
-        "early_churn_flag",
-        "has_family",
-        "is_month_to_month",
-        "is_fiber_optic",
+        "manual_payment",         # 0/1
+        "composite_risk_profile", # 0/1
     ]
 
     TARGET_COL = "Churn"
@@ -154,9 +273,9 @@ class DataTransformation:
 
         # Pipeline cho cột số: xử lý giá trị thiếu bằng median, cắt outlier, chuẩn hóa
         numeric_pipeline = Pipeline(steps=[
-            ("imputer", SimpleImputer(strategy="median")),
+            ("imputer",    SimpleImputer(strategy="median")),
             ("winsorizer", WinsorizerTransformer()),
-            ("scaler", StandardScaler()),
+            ("scaler",     StandardScaler()),
         ])
 
         # Pipeline cho cột phân loại: xử lý giá trị thiếu bằng giá trị phổ biến nhất, mã hóa OHE
@@ -179,6 +298,11 @@ class DataTransformation:
             )),
         ])
 
+        # Pipeline cho cột thứ bậc phái sinh: chỉ cần xử lý giá trị thiếu
+        ordinal_pipeline = Pipeline(steps=[
+            ("imputer", SimpleImputer(strategy="most_frequent")),
+        ])
+
         # Pipeline cho các feature nhị phân đã tạo sẵn: chỉ cần xử lý giá trị thiếu
         engineered_pipeline = Pipeline(steps=[
             ("imputer", SimpleImputer(strategy="most_frequent")),
@@ -187,10 +311,11 @@ class DataTransformation:
         # Gộp tất cả các pipeline lại theo từng nhóm cột
         preprocessor = ColumnTransformer(
             transformers=[
-                ("num", numeric_pipeline, self.NUMERIC_COLS),
+                ("num", numeric_pipeline,     self.NUMERIC_COLS),
                 ("cat", categorical_pipeline, self.CATEGORICAL_COLS),
-                ("bin", binary_pipeline, self.BINARY_COLS),
-                ("eng", engineered_pipeline, self.ENGINEERED_BINARY_COLS),
+                ("bin", binary_pipeline,      self.BINARY_COLS),
+                ("ord", ordinal_pipeline,     self.ORDINAL_COLS),
+                ("eng", engineered_pipeline,  self.ENGINEERED_BINARY_COLS),
             ],
             remainder="drop",  # loại bỏ tất cả cột không được liệt kê ở trên
         )
@@ -198,15 +323,15 @@ class DataTransformation:
         # Pipeline đầy đủ: tạo feature mới trước, rồi xử lý
         full_pipeline = Pipeline(steps=[
             ("feature_engineering", ChurnFeatureEngineer()),
-            ("preprocessing", preprocessor),
+            ("preprocessing",       preprocessor),
         ])
 
         return full_pipeline
 
     def initiate_data_transformation(self):
         # Điểm vào được gọi bởi stage_03_data_transformation.py
-        # Thứ tự xử lý: load dữ liệu, drop cột, tách X/y, fit pipeline trên train,
-        # transform cả train và test, áp dụng SMOTE trên train, lưu kết quả
+        # Thứ tự xử lý: load dữ liệu, lọc hàng, drop cột, tách X/y,
+        # fit pipeline trên train, transform test, SMOTE trên train, lưu kết quả
 
         logger.info("Bắt đầu Stage 03: Data Transformation")
 
@@ -223,14 +348,25 @@ class DataTransformation:
         for df in [df_train, df_test]:
             df["TotalCharges"] = pd.to_numeric(df["TotalCharges"], errors="coerce")
 
-        # Bước 3: Loại bỏ các cột không cần thiết
-        cols_drop_train = [c for c in self.COLS_TO_DROP if c in df_train.columns]
-        cols_drop_test  = [c for c in self.COLS_TO_DROP if c in df_test.columns]
-        df_train = df_train.drop(columns=cols_drop_train)
-        df_test  = df_test.drop(columns=cols_drop_test)
-        logger.info(f"Đã xóa các cột: {cols_drop_train}")
+        # Bước 3: Lọc bỏ các hàng có InternetService="No" VÀ PhoneService="No"
+        # Nhóm này không sử dụng bất kỳ dịch vụ nào, không có giá trị dự báo
+        before = len(df_train)
+        df_train = df_train[
+            ~((df_train["InternetService"] == "No") & (df_train["PhoneService"] == "No"))
+        ].reset_index(drop=True)
+        logger.info(f"Lọc Internet=No & Phone=No: {before} → {len(df_train)} hàng (bỏ {before - len(df_train)})")
 
-        # Bước 4: Tách biến đầu vào X và nhãn mục tiêu y
+        if "InternetService" in df_test.columns and "PhoneService" in df_test.columns:
+            before_test = len(df_test)
+            df_test = df_test[
+                ~((df_test["InternetService"] == "No") & (df_test["PhoneService"] == "No"))
+            ].reset_index(drop=True)
+            logger.info(f"Lọc test Internet=No & Phone=No: {before_test} → {len(df_test)} hàng")
+
+        # Bước 4: (Bỏ qua) Không drop cột ở đây vì ChurnFeatureEngineer cần chúng để tính toán.
+        # Các cột gốc này sẽ tự động bị loại bỏ bởi ColumnTransformer(remainder="drop") ở cuối pipeline.
+
+        # Bước 5: Tách biến đầu vào X và nhãn mục tiêu y
         X_train = df_train.drop(columns=[self.TARGET_COL])
         y_train = df_train[self.TARGET_COL].map({"Yes": 1, "No": 0})
 
@@ -244,18 +380,18 @@ class DataTransformation:
 
         logger.info(f"X_train: {X_train.shape}, tỷ lệ churn: {y_train.mean():.2%}")
 
-        # Bước 5: Fit pipeline CHỈ trên tập train để tránh data leakage
+        # Bước 6: Fit pipeline CHỈ trên tập train để tránh data leakage
         logger.info("Fit preprocessing pipeline trên X_train")
         pipeline = self.get_data_transformer_object()
         X_train_transformed = pipeline.fit_transform(X_train)
 
-        # Bước 6: Chỉ transform X_test, không fit lại
+        # Bước 7: Chỉ transform X_test, không fit lại
         logger.info("Transform X_test (không fit lại)")
         X_test_transformed = pipeline.transform(X_test)
 
         logger.info(f"Sau transform: X_train {X_train_transformed.shape}, X_test {X_test_transformed.shape}")
 
-        # Bước 7: Áp dụng SMOTE CHỈ trên tập train để xử lý mất cân bằng nhãn (77.5% No vs 22.5% Yes)
+        # Bước 8: Áp dụng SMOTE CHỈ trên tập train để xử lý mất cân bằng nhãn
         logger.info("Áp dụng SMOTE trên X_train để cân bằng nhãn")
         logger.info(f"Phân phối nhãn trước SMOTE: {dict(zip(*np.unique(y_train, return_counts=True)))}")
 
@@ -267,11 +403,11 @@ class DataTransformation:
         logger.info(f"Phân phối nhãn sau SMOTE: {dict(zip(*np.unique(y_train_resampled, return_counts=True)))}")
         logger.info(f"X_train sau SMOTE: {X_train_resampled.shape}")
 
-        # Bước 8: Lưu pipeline đã fit (không lưu SMOTE vì không cần khi dự báo)
+        # Bước 9: Lưu pipeline đã fit (không lưu SMOTE vì không cần khi dự báo)
         joblib.dump(pipeline, self.config.preprocessor_path)
         logger.info(f"Đã lưu preprocessor: {self.config.preprocessor_path}")
 
-        # Bước 9: Lưu dữ liệu đã xử lý để Stage 04 sử dụng
+        # Bước 10: Lưu dữ liệu đã xử lý để Stage 04 sử dụng
         train_path = self.config.root_dir / "train_transformed.npz"
         test_path  = self.config.root_dir / "test_transformed.npz"
 
@@ -285,7 +421,7 @@ class DataTransformation:
         logger.info(f"Đã lưu file train: {train_path}")
         logger.info(f"Đã lưu file test: {test_path}")
 
-        # Bước 10: Kiểm tra kết quả trước khi kết thúc
+        # Bước 11: Kiểm tra kết quả trước khi kết thúc
         assert X_train_resampled.shape[1] == X_test_transformed.shape[1], \
             "Lỗi: Số cột của train và test không khớp sau khi transform"
         assert not np.isnan(X_train_resampled).any(), \
