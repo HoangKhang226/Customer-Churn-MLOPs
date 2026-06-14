@@ -1,38 +1,10 @@
 # Customer Churn Prediction - ML Pipeline
 
 ## Từ điển Dữ liệu (Data Dictionary)
-Bảng dưới đây mô tả chi tiết 23 đặc trưng trong tập dữ liệu đã được làm sạch, kiến tạo **Feature Engineering** và tối ưu hóa để huấn luyện mô hình **Machine Learning**.
 
-**CÁC ĐẶC TRƯNG TỐI ƯU PHỤC VỤ MACHINE LEARNING**
-
-| Đặc trưng | Kiểu đặc trưng | Mô tả | Ghi chú |
-| :--- | :--- | :--- | :--- |
-| `PhoneService` | Gốc | Dịch vụ điện thoại | **Yes** / **No** |
-| `MultipleLines` | Gốc | Dùng nhiều số điện thoại | **Yes** / **No** / **No phone service** |
-| `InternetService` | Gốc | Loại mạng Internet | **DSL** / **Fiber optic** / **No** |
-| `OnlineSecurity` | Gốc | Gói bảo mật trực tuyến | **Yes** / **No** / **No internet service** |
-| `OnlineBackup` | Gốc | Gói sao lưu đám mây | **Yes** / **No** / **No internet service** |
-| `DeviceProtection` | Gốc | Gói bảo vệ thiết bị | **Yes** / **No** / **No internet service** |
-| `TechSupport` | Gốc | Gói hỗ trợ kỹ thuật | **Yes** / **No** / **No internet service** |
-| `StreamingTV` | Gốc | Xem truyền hình qua mạng | **Yes** / **No** / **No internet service** |
-| `StreamingMovies` | Gốc | Xem phim trực tuyến | **Yes** / **No** / **No internet service** |
-| `Contract` | Gốc | Loại hợp đồng | **Month-to-month** / **One year** / **Two year** |
-| `PaperlessBilling` | Gốc | Hóa đơn điện tử | **Yes** / **No** |
-| `PaymentMethod` | Gốc | Phương thức thanh toán | **Electronic check** / **Mailed check** / **Bank transfer (automatic)** / **Credit card (automatic)** |
-| `churn_flag` | Mục tiêu | Trạng thái rời bỏ (nhị phân) | `Churn` là **Yes** gán **1**, **No** gán **0** |
-| `loyalty_tier` | Phái sinh — Phân khúc | Phân khúc trung thành | Dùng `pd.cut` chia bins `[0, 6, 12, 24, 48, vô cùng]` tương ứng với các nhãn: **Onboarding** / **First Year** / **Second Year** / **Familiar** / **Loyal** |
-| `charge_segment` | Phái sinh — Phân khúc | Phân khúc cước phí | Dùng `pd.cut` chia bins `[0, 35, 70, vô cùng]` tương ứng với các nhãn: **Budget** / **Standard** / **Premium** |
-| `total_active_services` | Phái sinh — Đếm | Tổng số dịch vụ đang dùng | Đếm tổng số lượng nhãn **Yes** của các dịch vụ. Riêng `InternetService` nếu là **DSL** hoặc **Fiber optic** thì đếm là 1. Các biến đếm bao gồm `InternetService`, `OnlineSecurity`, `TechSupport`, `OnlineBackup`, `DeviceProtection`, `StreamingTV`, `StreamingMovies`, `PhoneService`, `MultipleLines`  |
-| `charge_to_tenure_ratio_log` | Phái sinh — Tài chính | Log tỷ lệ áp lực chi phí | Công thức: np.log1p(`MonthlyCharges` / `tenure`) |
-| `average_cost_per_service` | Phái sinh — Tài chính | Đơn giá trung bình mỗi dịch vụ | Công thức: `MonthlyCharges` / `total_active_services` |
-| `security_score` | Phái sinh — Điểm số | Điểm Khiên Bảo vệ đo lường số lớp phòng thủ kỹ thuật | Đếm tổng số lượng nhãn **Yes** của 4 biến: `OnlineSecurity`, `TechSupport`, `OnlineBackup`, `DeviceProtection` (Thang điểm 0-4). Quan trọng: Nếu `InternetService` là **No** thì gán đè thành **-1** |
-| `streaming_score` | Phái sinh — Điểm số | Điểm Giải trí đo lường mức độ sử dụng truyền thông | Đếm tổng số lượng nhãn **Yes** của 2 biến: `StreamingTV`, `StreamingMovies` (Thang điểm 0-2). Quan trọng: Nếu `InternetService` là **No** thì gán đè thành **-1** |
-| `manual_payment` | Phái sinh — Cờ | Khách hàng thanh toán bằng phương thức thủ công | Nếu `PaymentMethod` là **Electronic check** hoặc **Mailed check** gán **1**, các phương thức còn lại gán **0** |
-| `composite_risk_profile` | Phái sinh — Siêu cờ | Tổ hợp rủi ro rời bỏ ở mức đỉnh điểm | Nếu `Contract` là **Month-to-month** ĐỒNG THỜI `InternetService` là **Fiber optic** gán **1**, các trường hợp khác gán **0** |
-| `demographic_profile` | Phái sinh — Biến nén | Phân khúc nhân khẩu học tổng hợp đa biến | Nhóm **Isolated Senior**: `SeniorCitizen`=**1** VÀ `Partner`=**No** VÀ `Dependents`=**No** <br> Nhóm **Supported Senior**: `SeniorCitizen`=**1** VÀ (`Partner`=**Yes** HOẶC `Dependents`=**Yes**) <br> Nhóm **Single Youth**: `SeniorCitizen`=**0** VÀ `Partner`=**No** VÀ `Dependents`=**No** <br> Nhóm **Nuclear Family**: `SeniorCitizen`=**0** VÀ (`Partner`=**Yes** HOẶC `Dependents`=**Yes**) |
+Thông tin dataset xem chi tiết ở [docs/dataset.md](docs/dataset.md)
 
 Dự án dự đoán khách hàng rời bỏ dịch vụ (Customer Churn) sử dụng Machine Learning với kiến trúc MLOps Pipeline hoàn chỉnh.
-
 
 ## 🎯 Tổng quan dự án
 
@@ -77,230 +49,7 @@ customer_churn_prediction/
 
 ## 📂 Chi tiết các thư mục
 
-### 1️⃣ `config/` - Thư mục cấu hình
-
-```
-config/
-├── config.yaml          # Cấu hình đường dẫn artifacts cho từng stage
-├── schema.yaml          # Schema validation cho dữ liệu
-├── logging.yaml         # Cấu hình logging (format, handlers, levels)
-└── params.yaml          # Hyperparameters cho GridSearchCV
-```
-
-#### 📄 Giải thích từng file:
-
-- **`config.yaml`**:
-  - Định nghĩa `artifacts_root` và đường dẫn cho từng stage
-  - Cấu hình MLflow URI cho tracking
-  - Ví dụ: `data_ingestion.root_dir`, `model_trainer.train_data_path`
-
-- **`schema.yaml`**:
-  - Định nghĩa kiểu dữ liệu cho từng cột (int64, float64, object)
-  - Chỉ định cột target (`Churn`)
-  - Dùng để validate dữ liệu trong Stage 2
-
-- **`logging.yaml`**:
-  - Cấu hình format log (timestamp, level, message)
-  - Định nghĩa handlers (console, file)
-  - Thiết lập log levels cho từng module
-
-- **`params.yaml`**:
-  - Hyperparameters cho LightGBM: `n_estimators`, `max_depth`, `learning_rate`
-  - Hyperparameters cho XGBoost: `n_estimators`, `max_depth`, `learning_rate`
-  - Mỗi mô hình có 6 tổ hợp tham số cho GridSearchCV
-
----
-
-### 2️⃣ `src/components/` - Components xử lý logic
-
-```
-src/components/
-├── data_ingestion.py           # Giải nén dữ liệu từ zip
-├── data_validation.py          # Kiểm tra schema của dữ liệu
-├── data_transformation.py      # Feature engineering & preprocessing
-├── model_trainer.py            # Training với GridSearchCV
-├── model_evaluation.py         # Evaluation và visualization
-└── prediction.py               # Dự đoán dữ liệu mới (Inference)
-```
-
-#### 📄 Giải thích từng file:
-
-- **`data_ingestion.py`** (Stage 1):
-  - **Class**: `DataIngestion`
-  - **Chức năng**: Giải nén file `playground-series-s6e3.zip` từ thư mục `data/`
-  - **Output**: `train.csv`, `test.csv` trong `artifacts/data_ingestion/`
-  - **Method chính**: `extract_zip_file()`
-
-- **`data_validation.py`** (Stage 2):
-  - **Class**: `DataValidation`
-  - **Chức năng**: Kiểm tra xem tất cả các cột trong dữ liệu có khớp với `schema.yaml` không
-  - **Output**: `status.txt` (True/False) trong `artifacts/data_validation/`
-  - **Method chính**: `validate_all_columns()`
-
-- **`data_transformation.py`** (Stage 3):
-  - **Class**: `DataTransformation`, `ChurnFeatureEngineer`, `WinsorizerTransformer`
-  - **Chức năng**:
-    - Tạo 9 features mới từ EDA insights
-    - Preprocessing: Imputation, Scaling, Encoding
-    - Áp dụng SMOTE để cân bằng nhãn (50:50)
-  - **Output**:
-    - `train_transformed.npz` (920,754 samples, 23 features)
-    - `test_transformed.npz` (254,655 samples, 23 features)
-    - `preprocessor.joblib` (sklearn pipeline đã fit)
-  - **Method chính**: `initiate_data_transformation()`
-
-- **`model_trainer.py`** (Stage 4):
-  - **Class**: `ModelTrainer`
-  - **Chức năng**:
-    - Load dữ liệu từ `.npz` files
-    - Chia train/validation (80/20)
-    - GridSearchCV cho LightGBM (6 tổ hợp)
-    - GridSearchCV cho XGBoost (6 tổ hợp)
-    - So sánh và chọn mô hình tốt nhất dựa trên ROC AUC
-    - Log tất cả vào MLflow
-  - **Output**:
-    - `model.joblib` (mô hình tốt nhất)
-    - `metrics.json` (accuracy, precision, recall, f1, roc_auc)
-  - **Method chính**: `initiate_model_trainer()`
-
-- **`model_evaluation.py`** (Stage 5):
-  - **Class**: `ModelEvaluation`
-  - **Chức năng**:
-    - Load mô hình đã train
-    - Tạo predictions trên test set
-    - Tính toán metrics (nếu có nhãn)
-    - Tạo visualizations: Confusion Matrix, ROC Curve
-    - Log artifacts vào MLflow
-  - **Output**:
-    - `predictions.npz` (predictions cho test set)
-    - `metrics.json` (nếu có nhãn test)
-    - `confusion_matrix.png`, `roc_curve.png` (nếu có nhãn test)
-  - **Method chính**: `initiate_model_evaluation()`
-
-- **`prediction.py`** (Stage 6):
-  - **Class**: `PredictionPipeline`
-  - **Chức năng**:
-    - Load mô hình tốt nhất đã train và pipeline preprocessor
-    - Load dữ liệu test chưa gán nhãn
-    - Thực hiện tiền xử lý và dự đoán xác suất rời bỏ (Churn probabilities)
-    - Tạo file output phục vụ submission
-  - **Output**: `submission.csv`
-  - **Method chính**: `predict()`
-
----
-
-### 3️⃣ `src/config/` - Configuration Management
-
-```
-src/config/
-├── __init__.py
-└── configuration.py        # ConfigurationManager class
-```
-
-#### 📄 Giải thích:
-
-- **`configuration.py`**:
-  - **Class**: `ConfigurationManager`
-  - **Chức năng**:
-    - Đọc các file YAML (`config.yaml`, `schema.yaml`, `params.yaml`)
-    - Tạo thư mục artifacts nếu chưa tồn tại
-    - Cung cấp methods để lấy config cho từng stage
-  - **Methods**:
-    - `get_data_ingestion_config()` → `DataIngestionConfig`
-    - `get_data_validation_config()` → `DataValidationConfig`
-    - `get_data_transformation_config()` → `DataTransformationConfig`
-    - `get_model_trainer_config()` → `ModelTrainerConfig`
-    - `get_model_evaluation_config()` → `ModelEvaluationConfig`
-    - `get_prediction_config()` → `PredictionConfig`
-
----
-
-### 4️⃣ `src/entity/` - Data Entities
-
-```
-src/entity/
-└── config_entity.py        # Dataclasses cho config objects
-```
-
-#### 📄 Giải thích:
-
-- **`config_entity.py`**:
-  - **Dataclasses** (frozen=True để immutable):
-    - `DataIngestionConfig`: root_dir, local_data_file, unzip_dir
-    - `DataValidationConfig`: root_dir, STATUS_FILE, unzip_data_dir, all_schema
-    - `DataTransformationConfig`: root_dir, train_data_path, test_data_path, preprocessor_path
-    - `ModelTrainerConfig`: root_dir, train_data_path, test_data_path, model_name, lgbm_params, xgboost_params, mlflow_uri
-    - `ModelEvaluationConfig`: root_dir, test_data_path, model_path, all_params, metric_file_name, mlflow_uri
-    - `PredictionConfig`: model_path, preprocessor_path, test_data_path, submission_output_path
-  - **Mục đích**: Type-safe configuration objects, dễ dàng truyền giữa các components
-
----
-
-### 5️⃣ `src/pipeline/` - Pipeline Wrappers
-
-```
-src/pipeline/
-├── __init__.py
-├── stage_01_data_ingestion.py          # Wrapper cho Stage 1
-├── stage_02_data_validation.py         # Wrapper cho Stage 2
-├── stage_03_data_transformation.py     # Wrapper cho Stage 3
-├── stage_04_model_trainer.py           # Wrapper cho Stage 4
-├── stage_05_model_evaluation.py        # Wrapper cho Stage 5
-└── stage_06_prediction.py              # Wrapper cho Stage 6
-```
-
-#### 📄 Giải thích từng file:
-
-Mỗi file pipeline có cấu trúc tương tự:
-
-- **Class**: `<StageName>TrainingPipeline`
-- **Method**: `main()`
-  1. Khởi tạo `ConfigurationManager`
-  2. Lấy config cho stage tương ứng
-  3. Khởi tạo component với config
-  4. Gọi method chính của component
-
-**Ví dụ**: `stage_04_model_trainer.py`
-
-```python
-class ModelTrainerTrainingPipeline:
-    def main(self):
-        config = ConfigurationManager()
-        model_trainer_config = config.get_model_trainer_config()
-        model_trainer = ModelTrainer(config=model_trainer_config)
-        model_trainer.initiate_model_trainer()
-```
-
-**Mục đích**:
-
-- Tách biệt logic component và orchestration
-- Dễ dàng chạy từng stage độc lập để debug
-- Có thể chạy: `python src/pipeline/stage_04_model_trainer.py`
-
----
-
-### 6️⃣ `src/utils/` - Utility Functions
-
-```
-src/utils/
-├── common.py           # Các hàm tiện ích chung
-└── logger.py           # Logger configuration
-```
-
-#### 📄 Giải thích:
-
-- **`common.py`**:
-  - `read_yaml()`: Đọc file YAML và trả về ConfigBox
-  - `create_directories()`: Tạo danh sách thư mục
-  - `save_json()`, `load_json()`: Lưu/đọc JSON
-  - `save_bin()`, `load_bin()`: Lưu/đọc binary files (joblib)
-  - `get_size()`: Lấy kích thước file
-
-- **`logger.py`**:
-  - Setup logging từ `config/logging.yaml`
-  - Tạo logger instance dùng chung: `logger`
-  - Tự động tạo thư mục `logs/` nếu chưa có
-  - Cấu hình UTF-8 encoding cho Windows
+Chi tiết cấu trúc và giải thích về các thư mục/file có thể xem tại: [src/README.md](src/README.md)
 
 ---
 
@@ -344,7 +93,7 @@ python main.py
 **Thời gian ước tính**: 15-20 phút
 
 - Stage 1-3: ~30 giây
-- Stage 4 (Training): ~10-15 phút (GridSearchCV)
+- Stage 4 (Training): ~10-15 phút (Tuning bằng Optuna)
 - Stage 5 (Evaluation): ~10 giây
 - Stage 6 (Prediction & Submission): ~15 giây
 
@@ -393,31 +142,34 @@ python predict.py
 
 ## 📊 Kết quả chi tiết
 
-### Model Performance
+### Model Performance (Validation Set)
 
-| Mô hình      | ROC AUC    | F1-Score | Kết quả         |
-| ------------ | ---------- | -------- | --------------- |
-| **LightGBM** | **93.39%** | -        | ✅ **Tốt nhất** |
-| XGBoost      | 93.01%     | 86.63%   | -               |
+| Mô hình                | Accuracy | Precision | Recall | F1-Score | ROC AUC    | Kết quả         |
+| ---------------------- | -------- | --------- | ------ | -------- | ---------- | --------------- |
+| **StackingClassifier** | 86.54%   | 84.32%    | 89.77% | 86.96%   | **93.56%** | ✅ **Tốt nhất** |
+| XGBoost                | 86.52%   | 83.64%    | 90.80% | 87.07%   | 93.52%     | Tốt             |
+| LightGBM               | 86.35%   | 83.44%    | 90.71% | 86.92%   | 93.41%     | Khá             |
+| CatBoost               | 86.33%   | 83.48%    | 90.58% | 86.89%   | 93.39%     | Khá             |
 
 ## 📊 Kết quả đạt được
 
-- **Mô hình tốt nhất**: LightGBM
-- **ROC AUC Score**: 93.39%
+- **Mô hình tốt nhất**: StackingClassifier (Ensemble của LightGBM, XGBoost, CatBoost)
+- **ROC AUC Score**: 93.56%
+- **F1-Score**: 86.96%
 - **Dataset**: Kaggle Playground Series S6E3 (~594k training samples)
-- **Features**: 23 features sau feature engineering và preprocessing
+- **Features**: 33 features sau feature engineering và preprocessing (áp dụng SMOTE cân bằng nhãn)
 
-### 📈 Biểu đồ đánh giá (Validation Set)
+### 📈 Biểu đồ đánh giá
 
-Để trực quan hóa hiệu suất phân loại của mô hình tốt nhất (LightGBM), các biểu đồ đánh giá đã được vẽ và lưu trữ trong thư mục `docs/`:
+Để trực quan hóa hiệu suất phân loại của mô hình tốt nhất, các biểu đồ đánh giá đã được vẽ và lưu trữ trong thư mục `docs/`:
 
-#### 1. Confusion Matrix (Ma trận nhầm lẫn)
+#### 1. Confusion Matrix
 
 ![Confusion Matrix](docs/validation_confusion_matrix.png)
 
-#### 2. ROC Curve (Đường cong ROC)
+#### 2. ROC Curve
 
-![ROC Curve](docs/validation_roc_curve.png)
+![ROC Curve]
 
 ### Artifacts được tạo ra
 
@@ -431,13 +183,13 @@ artifacts/
 │   └── status.txt                      # Validation status: True
 │
 ├── data_transformation/
-│   ├── train_transformed.npz           # 920,754 rows, 23 features (sau SMOTE)
-│   ├── test_transformed.npz            # 254,655 rows, 23 features
+│   ├── train_transformed.npz           # 920,740 rows, 33 features (sau SMOTE)
+│   ├── test_transformed.npz            # 254,653 rows, 33 features
 │   └── preprocessor.joblib             # Sklearn pipeline đã fit
 │
 ├── model_trainer/
-│   ├── model.joblib                    # LightGBM model (tốt nhất)
-│   └── metrics.json                    # ROC AUC: 0.9339
+│   ├── model.joblib                    # StackingClassifier model (tốt nhất)
+│   └── metrics.json                    # ROC AUC: 0.9356
 │
 ├── model_evaluation/
 │   └── predictions.npz                 # Predictions cho test set
@@ -490,16 +242,6 @@ model_evaluation:
   mlflow_uri: "http://your-mlflow-server:5000"
 ```
 
-
-## 🤝 Đóng góp
-
-Dự án này được phát triển bởi nhóm:
-
-- **EDA**: Giabi, Thầy Huy, Fuck, LA
-- **Features Engineering**: Báo
-- **Model Training**: K
-- **Evaluation & Decoration**: Đức
-
 ---
 
 ## 📚 Tài liệu tham khảo
@@ -521,3 +263,5 @@ Nếu có câu hỏi hoặc vấn đề, vui lòng tạo issue trên GitHub repo
 **Last Updated**: 2026-05-27  
 **Version**: 1.0.0  
 **Status**: ✅ Production Ready
+#   C u s t o m e r - C h u r n - M L O P s  
+ 
