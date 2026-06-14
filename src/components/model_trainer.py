@@ -35,17 +35,17 @@ class ModelTrainer:
             tuple: (X_train, y_train, X_test, y_test)
         """
         logger.info(f"Đọc dữ liệu train từ: {self.config.train_data_path}")
-        train_data = np.load(self.config.train_data_path)
-        X_train = train_data['X']
-        y_train = train_data['y']
+        train_data = np.load(self.config.train_data_path, allow_pickle=True)
+        X_train = train_data['X'].astype(np.float32)
+        y_train = train_data['y'].astype(int)
 
         logger.info(f"Đọc dữ liệu test từ: {self.config.test_data_path}")
-        test_data = np.load(self.config.test_data_path)
-        X_test = test_data['X']
+        test_data = np.load(self.config.test_data_path, allow_pickle=True)
+        X_test = test_data['X'].astype(np.float32)
         
         # Test data có thể không có nhãn (nếu là tập test của Kaggle)
-        if 'y' in test_data:
-            y_test = test_data['y']
+        if 'y' in test_data.files:
+            y_test = test_data['y'].astype(int)
         else:
             y_test = None
             logger.warning("Tập test không có nhãn (y), sẽ chỉ train và validate trên tập train")
