@@ -101,6 +101,7 @@ class ConfigurationManager:
             model_name=config.model_name,
             lgbm_params=params.LightGBM,
             xgboost_params=params.XGBoost,
+            catboost_params=params.CatBoost,
             mlflow_uri=config.mlflow_uri,
         )
 

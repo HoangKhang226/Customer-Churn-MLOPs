@@ -83,15 +83,15 @@ src/pipeline/
 **Chức năng**: Orchestrate Stage 4 - Model Training
 
 **Làm gì**:
-- Khởi tạo ConfigurationManager
-- Lấy config cho model trainer (bao gồm hyperparameters từ params.yaml)
-- Khởi tạo ModelTrainer component với config
-- Gọi method `initiate_model_trainer()` để train models
-- Xử lý lỗi và logging
+- Khởi tạo ConfigurationManager và lấy config cho model trainer.
+- Khởi tạo ModelTrainer component, chia dữ liệu Train thành tập học (80%) và tập đánh giá Validation (20%).
+- Tuning siêu tham số bằng Optuna (kết hợp 3-Fold Cross Validation) để tối ưu cho 3 mô hình cơ sở: LightGBM, XGBoost, CatBoost.
+- Huấn luyện mô hình Ensemble (StackingClassifier) dùng 5-Fold CV để kết hợp dự đoán từ 3 mô hình trên, sử dụng Logistic Regression làm mô hình quyết định cuối cùng.
+- So sánh điểm ROC AUC trên tập Validation của tất cả mô hình, log biểu đồ/metrics lên MLflow và lưu mô hình tốt nhất vào disk.
 
 **Có thể chạy độc lập**: `python src/pipeline/stage_04_model_trainer.py`
 
-**Thời gian chạy**: ~10-15 phút (GridSearchCV)
+**Thời gian chạy**: ~10-15 phút (Tuning bằng Optuna)
 
 ---
 

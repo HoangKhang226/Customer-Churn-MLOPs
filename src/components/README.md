@@ -7,7 +7,7 @@ src/components/
 ├── data_ingestion.py           # Stage 1: Giải nén dữ liệu
 ├── data_validation.py          # Stage 2: Kiểm tra schema
 ├── data_transformation.py      # Stage 3: Feature engineering & preprocessing
-├── model_trainer.py            # Stage 4: Training với GridSearchCV
+├── model_trainer.py            # Stage 4: Training & Tuning với Optuna
 ├── model_evaluation.py         # Stage 5: Evaluation và visualization
 └── prediction.py               # Stage 6: Tạo predictions & submission
 ```
@@ -84,9 +84,11 @@ src/components/
 **Làm gì**:
 - Đọc dữ liệu đã transform từ Stage 3 (file `.npz`)
 - Chia tập train thành train (80%) và validation (20%)
-- **GridSearchCV** để tìm hyperparameters tốt nhất:
-  - LightGBM: 6 tổ hợp tham số
-  - XGBoost: 6 tổ hợp tham số
+- **Optuna** để tìm hyperparameters tốt nhất:
+  - LightGBM: 15 trials
+  - XGBoost: 15 trials
+  - CatBoost: 15 trials
+  - StackingClassifier: Mô hình meta kết hợp các mô hình trên
   - Scoring metric: ROC AUC
   - Cross-validation: 3-fold
 - So sánh 2 mô hình và chọn mô hình có ROC AUC cao nhất

@@ -3,14 +3,23 @@ import os
 from src.utils.logger import logger
 from lightgbm import LGBMClassifier
 from xgboost import XGBClassifier
-from sklearn.model_selection import GridSearchCV, train_test_split
+from sklearn.model_selection import train_test_split, cross_val_score
+import optuna
+from catboost import CatBoostClassifier
+from sklearn.ensemble import StackingClassifier
+from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (
     accuracy_score,
     precision_score,
     recall_score,
     f1_score,
     roc_auc_score,
+    confusion_matrix,
+    roc_curve,
+    auc,
 )
+import matplotlib.pyplot as plt
+import seaborn as sns
 import joblib
 import mlflow
 import mlflow.sklearn
@@ -22,7 +31,7 @@ from urllib.parse import urlparse
 class ModelTrainer:
     """
     Component chịu trách nhiệm huấn luyện mô hình (Model Training).
-    Thực hiện GridSearch trên LightGBM và XGBoost, chọn mô hình tốt nhất và log vào MLflow.
+    Thực hiện Optuna Study trên LightGBM, XGBoost, CatBoost và dùng StackingClassifier.
     """
     def __init__(self, config: ModelTrainerConfig):
         self.config = config
@@ -58,36 +67,63 @@ class ModelTrainer:
 
         return X_train, y_train, X_test, y_test
 
-    def hyperparameter_tuning(self, model, param_grid, X_train, y_train):
+    def hyperparameter_tuning(self, model_name, model_class, param_space, X_train, y_train):
         """
-        Thực hiện GridSearchCV để tìm siêu tham số tốt nhất.
+        Thực hiện Optuna Study để tìm siêu tham số tốt nhất.
         
         Args:
-            model: Mô hình cần tune (LightGBM hoặc XGBoost)
-            param_grid: Lưới tham số để tìm kiếm
+            model_name: Tên mô hình ('LightGBM', 'XGBoost', 'CatBoost')
+            model_class: Lớp mô hình
+            param_space: Không gian tham số Optuna
             X_train: Dữ liệu huấn luyện
             y_train: Nhãn huấn luyện
             
         Returns:
             tuple: (best_estimator, best_params)
         """
-        logger.info(f"Bắt đầu GridSearchCV với {len(param_grid)} tham số")
+        n_trials = param_space.get('n_trials', 10)
+        logger.info(f"Bắt đầu Optuna tuning cho {model_name} với {n_trials} trials")
         
-        grid_search = GridSearchCV(
-            estimator=model,
-            param_grid=param_grid,
-            cv=3,  # 3-fold cross validation
-            n_jobs=-1,  # Sử dụng tất cả CPU cores
-            scoring='roc_auc',  # Metric chính cho bài toán churn
-            verbose=1
-        )
+        def objective(trial):
+            if model_name == "CatBoost":
+                params = {
+                    'iterations': trial.suggest_int('iterations', param_space['iterations'][0], param_space['iterations'][1]),
+                    'depth': trial.suggest_int('depth', param_space['depth'][0], param_space['depth'][1]),
+                    'learning_rate': trial.suggest_float('learning_rate', param_space['learning_rate'][0], param_space['learning_rate'][1], log=True)
+                }
+            else:
+                params = {
+                    'n_estimators': trial.suggest_int('n_estimators', param_space['n_estimators'][0], param_space['n_estimators'][1]),
+                    'max_depth': trial.suggest_int('max_depth', param_space['max_depth'][0], param_space['max_depth'][1]),
+                    'learning_rate': trial.suggest_float('learning_rate', param_space['learning_rate'][0], param_space['learning_rate'][1], log=True)
+                }
+                
+            if model_name == "LightGBM":
+                model = model_class(random_state=42, verbose=-1, **params)
+            elif model_name == "CatBoost":
+                model = model_class(random_state=42, verbose=0, **params)
+            else:
+                model = model_class(random_state=42, eval_metric='logloss', n_jobs=-1, **params)
+                
+            score = cross_val_score(model, X_train, y_train, cv=3, scoring='roc_auc')
+            return score.mean()
+
+        optuna.logging.set_verbosity(optuna.logging.INFO)
+        study = optuna.create_study(direction="maximize")
+        study.optimize(objective, n_trials=n_trials)
         
-        grid_search.fit(X_train, y_train)
+        logger.info(f"Best params cho {model_name}: {study.best_params}")
+        logger.info(f"Best CV ROC AUC score: {study.best_value:.4f}")
         
-        logger.info(f"Best params: {grid_search.best_params_}")
-        logger.info(f"Best CV ROC AUC score: {grid_search.best_score_:.4f}")
-        
-        return grid_search.best_estimator_, grid_search.best_params_
+        best_params = study.best_params
+        if model_name == "LightGBM":
+            best_model = model_class(random_state=42, verbose=-1, **best_params)
+        elif model_name == "CatBoost":
+            best_model = model_class(random_state=42, verbose=0, **best_params)
+        else:
+            best_model = model_class(random_state=42, eval_metric='logloss', n_jobs=-1, **best_params)
+            
+        return best_model, best_params
 
     def train_and_log(self, model_name, model, params, X_train, X_val, y_train, y_val):
         """
@@ -96,7 +132,7 @@ class ModelTrainer:
         Args:
             model_name: Tên mô hình (LightGBM hoặc XGBoost)
             model: Mô hình đã được tune
-            params: Tham số tốt nhất từ GridSearch
+            params: Tham số tốt nhất từ Optuna
             X_train, X_val, y_train, y_val: Dữ liệu train và validation
             
         Returns:
@@ -142,6 +178,40 @@ class ModelTrainer:
             mlflow.log_params(params)
             for metric_name, metric_value in metrics.items():
                 mlflow.log_metric(metric_name, metric_value)
+
+            # Vẽ và log Confusion Matrix
+            cm = confusion_matrix(y_val, y_pred)
+            plt.figure(figsize=(6, 5))
+            sns.heatmap(cm, annot=True, fmt="d", cmap="Blues")
+            plt.title(f"Confusion Matrix - {model_name}")
+            plt.ylabel("Actual")
+            plt.xlabel("Predicted")
+            
+            docs_dir = os.path.join("docs", "evaluation")
+            os.makedirs(docs_dir, exist_ok=True)
+            
+            cm_path = os.path.join(docs_dir, f"{model_name}_cm.png")
+            plt.savefig(cm_path, bbox_inches='tight')
+            plt.close()
+            mlflow.log_artifact(cm_path)
+
+            # Vẽ và log ROC Curve
+            fpr, tpr, _ = roc_curve(y_val, y_prob)
+            roc_auc_val = auc(fpr, tpr)
+            plt.figure(figsize=(6, 5))
+            plt.plot(fpr, tpr, color="darkorange", lw=2, label=f"AUC = {roc_auc_val:.4f}")
+            plt.plot([0, 1], [0, 1], color="navy", lw=2, linestyle="--")
+            plt.xlim([0.0, 1.0])
+            plt.ylim([0.0, 1.05])
+            plt.xlabel("False Positive Rate")
+            plt.ylabel("True Positive Rate")
+            plt.title(f"ROC Curve - {model_name}")
+            plt.legend(loc="lower right")
+            
+            roc_path = os.path.join(docs_dir, f"{model_name}_roc.png")
+            plt.savefig(roc_path, bbox_inches='tight')
+            plt.close()
+            mlflow.log_artifact(roc_path)
 
             # Log model vào MLflow
             mlflow.sklearn.log_model(model, "model")
@@ -211,9 +281,8 @@ class ModelTrainer:
         logger.info("Tuning và Training LightGBM...")
         logger.info("=" * 60)
         
-        lgbm = LGBMClassifier(random_state=42, verbose=-1)
         best_lgbm, best_lgbm_params = self.hyperparameter_tuning(
-            lgbm, self.config.lgbm_params, X_train, y_train
+            "LightGBM", LGBMClassifier, self.config.lgbm_params, X_train, y_train
         )
         lgbm_res = self.train_and_log(
             "LightGBM", best_lgbm, best_lgbm_params, X_train, X_val, y_train, y_val
@@ -225,26 +294,54 @@ class ModelTrainer:
         logger.info("Tuning và Training XGBoost...")
         logger.info("=" * 60)
         
-        xgb = XGBClassifier(
-            random_state=42,
-            eval_metric='logloss',
-            use_label_encoder=False
-        )
         best_xgb, best_xgb_params = self.hyperparameter_tuning(
-            xgb, self.config.xgboost_params, X_train, y_train
+            "XGBoost", XGBClassifier, self.config.xgboost_params, X_train, y_train
         )
         xgb_res = self.train_and_log(
             "XGBoost", best_xgb, best_xgb_params, X_train, X_val, y_train, y_val
         )
         results.append(xgb_res)
 
-        # Bước 5: So sánh và chọn mô hình tốt nhất
+        # Bước 5: Huấn luyện CatBoost
+        logger.info("=" * 60)
+        logger.info("Tuning và Training CatBoost...")
+        logger.info("=" * 60)
+        
+        best_cb, best_cb_params = self.hyperparameter_tuning(
+            "CatBoost", CatBoostClassifier, self.config.catboost_params, X_train, y_train
+        )
+        cb_res = self.train_and_log(
+            "CatBoost", best_cb, best_cb_params, X_train, X_val, y_train, y_val
+        )
+        results.append(cb_res)
+
+        # Bước 6: Huấn luyện StackingClassifier
+        logger.info("=" * 60)
+        logger.info("Huấn luyện mô hình Stacking (Ensemble)...")
+        logger.info("=" * 60)
+        
+        stacking_model = StackingClassifier(
+            estimators=[
+                ('lgbm', best_lgbm),
+                ('xgb', best_xgb),
+                ('cb', best_cb)
+            ],
+            final_estimator=LogisticRegression(),
+            cv=5
+        )
+        
+        stacking_res = self.train_and_log(
+            "StackingClassifier", stacking_model, {"estimators": "LGBM, XGB, CatBoost"}, X_train, X_val, y_train, y_val
+        )
+        results.append(stacking_res)
+
+        # Bước 7: So sánh và chọn mô hình tốt nhất
         logger.info("=" * 60)
         logger.info("So sánh các mô hình...")
         logger.info("=" * 60)
         best_model_info = self.compare_models(results)
 
-        # Bước 6: Lưu mô hình tốt nhất
+        # Bước 8: Lưu mô hình tốt nhất
         self.save_model(best_model_info)
 
         logger.info("Hoàn thành Stage 04: Model Training")

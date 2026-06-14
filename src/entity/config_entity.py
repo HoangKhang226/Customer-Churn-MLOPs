@@ -34,6 +34,7 @@ class ModelTrainerConfig:
     model_name: str
     lgbm_params: dict
     xgboost_params: dict
+    catboost_params: dict
     mlflow_uri: str
 
 @dataclass(frozen=True)
