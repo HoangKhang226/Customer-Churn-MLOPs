@@ -32,3 +32,8 @@ ensure
 pyyaml>=6.0
 mlflow>=2.0.0
 optuna>=3.0.0
+
+# Testing & CI
+pytest>=7.0.0
+pytest-cov>=4.0.0
+flake8>=6.0.0

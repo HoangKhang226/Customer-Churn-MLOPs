@@ -1,15 +1,13 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
-import joblib
-import os
+import requests
 
 def render_predict():
     st.markdown("<h2 style='margin-bottom:0px; margin-top:0px;'>Dự đoán Khách hàng Rời bỏ (Prediction)</h2>", unsafe_allow_html=True)
     st.markdown("<hr style='margin-top:10px; margin-bottom:20px;'/>", unsafe_allow_html=True)
     
-    st.markdown("<div class='css-card'>", unsafe_allow_html=True)
-    st.markdown("#### 📝 Nhập thông tin khách hàng")
+
+    st.markdown("#### Nhập thông tin khách hàng")
     st.markdown("<div style='font-size:14px; color:#555; margin-bottom:15px;'>Điền các thông tin của khách hàng để mô hình LightGBM dự đoán rủi ro rời bỏ.</div>", unsafe_allow_html=True)
     
     with st.form("predict_form"):
@@ -36,63 +34,59 @@ def render_predict():
             monthly_charges = st.number_input("Cước hàng tháng ($)", min_value=0.0, max_value=200.0, value=70.0)
             total_charges = st.number_input("Tổng cước ($)", min_value=0.0, max_value=10000.0, value=70.0)
             
-        submit_button = st.form_submit_button("🚀 Thực hiện Dự đoán", type="primary")
+        submit_button = st.form_submit_button("Thực hiện Dự đoán", type="primary")
         
-    st.markdown("</div>", unsafe_allow_html=True)
+
     
     if submit_button:
-        # Load model and preprocessor
+        # Prepare input dictionary
+        input_dict = {
+            "gender": gender,
+            "SeniorCitizen": 1 if senior_citizen == "Yes" else 0,
+            "Partner": partner,
+            "Dependents": dependents,
+            "tenure": tenure,
+            "PhoneService": phone_service,
+            "MultipleLines": "No", # default
+            "InternetService": internet_service,
+            "OnlineSecurity": online_security,
+            "OnlineBackup": "No", # default
+            "DeviceProtection": "No", # default
+            "TechSupport": tech_support,
+            "StreamingTV": "No", # default
+            "StreamingMovies": "No", # default
+            "Contract": contract,
+            "PaperlessBilling": "Yes", # default
+            "PaymentMethod": "Electronic check", # default
+            "MonthlyCharges": monthly_charges,
+            "TotalCharges": total_charges,
+            "id": 999999, # dummy
+        }
+        
         try:
-            preprocessor = joblib.load('artifacts/data_transformation/preprocessor.joblib')
-            model = joblib.load('artifacts/model_trainer/model.joblib')
+            # Call FastAPI Backend
+            with st.spinner("Đang xử lý dự đoán từ Backend..."):
+                response = requests.post("http://localhost:8000/predict", json=input_dict)
+                response.raise_for_status()
+                result = response.json()
+                prob = result['churn_probability']
             
-            # Prepare input dataframe
-            input_dict = {
-                "gender": gender,
-                "SeniorCitizen": 1 if senior_citizen == "Yes" else 0,
-                "Partner": partner,
-                "Dependents": dependents,
-                "tenure": tenure,
-                "PhoneService": phone_service,
-                "MultipleLines": "No", # default
-                "InternetService": internet_service,
-                "OnlineSecurity": online_security,
-                "OnlineBackup": "No", # default
-                "DeviceProtection": "No", # default
-                "TechSupport": tech_support,
-                "StreamingTV": "No", # default
-                "StreamingMovies": "No", # default
-                "Contract": contract,
-                "PaperlessBilling": "Yes", # default
-                "PaymentMethod": "Electronic check", # default
-                "MonthlyCharges": monthly_charges,
-                "TotalCharges": total_charges,
-                "id": 999999, # dummy
-            }
-            
-            input_df = pd.DataFrame([input_dict])
-            
-            # Transform and Predict
-            X_transformed = preprocessor.transform(input_df)
-            prob = model.predict_proba(X_transformed)[0][1] * 100
-            
-            st.markdown("<div class='css-card' style='margin-top: 20px;'>", unsafe_allow_html=True)
-            st.markdown("#### 🎯 Kết quả Dự đoán")
+            st.markdown("#### Kết quả Dự đoán")
             
             res_col1, res_col2 = st.columns([1, 2])
             with res_col1:
                 st.markdown("<div style='text-align: center; padding: 20px;'>", unsafe_allow_html=True)
                 if prob > 70:
                     color = "#DC3545"
-                    status = "🔴 Rủi ro Cao"
+                    status = "Rủi ro Cao"
                     recommend = "Cần liên hệ chăm sóc ngay, đề xuất giảm giá cước hoặc nâng cấp gói hỗ trợ kỹ thuật."
                 elif prob > 40:
                     color = "#FFC107"
-                    status = "🟡 Nguy cơ Trung bình"
+                    status = "Nguy cơ Trung bình"
                     recommend = "Nên gửi email hoặc tin nhắn giới thiệu lợi ích của hợp đồng dài hạn."
                 else:
                     color = "#28A745"
-                    status = "🟢 An toàn"
+                    status = "An toàn"
                     recommend = "Khách hàng ổn định. Có thể giới thiệu thêm các dịch vụ giải trí (Streaming)."
                     
                 st.markdown(f"<h1 style='color:{color}; font-size:48px; margin:0;'>{prob:.1f}%</h1>", unsafe_allow_html=True)
@@ -109,7 +103,7 @@ def render_predict():
                 </div>
                 """, unsafe_allow_html=True)
                 
-            st.markdown("</div>", unsafe_allow_html=True)
+
             
         except Exception as e:
             st.error(f"Prediction Pipeline Error: {e}")

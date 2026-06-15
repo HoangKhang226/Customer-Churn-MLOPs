@@ -95,31 +95,13 @@ st.markdown("""
 
 # --- SIDEBAR ---
 with st.sidebar:
-    st.markdown("### 🔍 ChurnInspect")
+    st.markdown("### ChurnInspect")
     st.markdown("---")
     st.markdown("**MAIN**")
-    nav = st.radio("Navigation", ["Dashboard", "Predict (Inference)", "Cases", "Smart Review"], label_visibility="collapsed")
-    
-    st.markdown("---")
-    st.markdown("**ANALYTICS**")
-    st.markdown("- Model Performance")
-    st.markdown("- Feature Drift")
-    
-    st.markdown("---")
-    st.markdown("**MANAGEMENT**")
-    st.markdown("- Pipelines")
-    st.markdown("- Settings")
-    
-    st.markdown("---")
-    st.markdown("**OTHER**")
-    st.markdown("- Documentation")
-    st.markdown("- Logout")
+    nav = st.radio("Navigation", ["Dashboard", "Predict (Inference)"], label_visibility="collapsed")
 
 # 2. Page Routing
 if nav == "Dashboard":
     render_dashboard()
 elif nav == "Predict (Inference)":
     render_predict()
-else:
-    st.markdown("<h2 style='color:#333;'>Trang đang được xây dựng...</h2>", unsafe_allow_html=True)
-    st.markdown(f"Module **{nav}** sẽ được cập nhật trong các phiên bản tiếp theo.")
